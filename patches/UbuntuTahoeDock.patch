@@ -1,0 +1,334 @@
+--- a/docking.js
++++ b/docking.js
+@@ -488,6 +488,9 @@
+     }
+ 
+     _onDestroy() {
++        // Losing hover mid-destroy would restyle the disposed dash scroll view
++        this._box.track_hover = false;
++        this.dash.track_hover = false;
+         // The dash, intellihide and themeManager have global signals as well internally
+         this.dash.destroy();
+         this._intellihide.destroy();
+--- a/extension.js
++++ b/extension.js
+@@ -22,9 +22,11 @@
+         console.log('[UbuntuTahoeDock] Disabling macOS Tahoe Dock...');
+         try {
+             dockManager?.destroy();
+-            dockManager = null;
+         } catch (e) {
+             console.error('[UbuntuTahoeDock] Failed to destroy dockManager:', e);
++        } finally {
++            // A failed teardown must not stop the next enable() rebuilding the dock
++            dockManager = null;
+         }
+     }
+ }
+--- a/metadata.json
++++ b/metadata.json
+@@ -1,6 +1,6 @@
+ {
+   "name": "UbuntuTahoeDock",
+-  "description": "Thanh Dock phong cách macOS Tahoe cho GNOME Shell",
++  "description": "macOS Tahoe style dock for GNOME Shell",
+   "uuid": "UbuntuTahoeDock@adfoxtheme.github.io",
+   "settings-schema": "org.gnome.shell.extensions.ubuntutahoedock",
+   "shell-version": [
+--- a/prefs.js
++++ b/prefs.js
+@@ -8,29 +8,29 @@
+         const settings = this.getSettings();
+ 
+         const page = new Adw.PreferencesPage({
+-            title: 'Cài đặt UbuntuTahoe Dock',
++            title: 'UbuntuTahoe Dock Settings',
+             icon_name: 'preferences-desktop-display-symbolic',
+         });
+         window.add(page);
+ 
+         // Group 1: Chế độ hiển thị & Ẩn hiện
+         const behaviorGroup = new Adw.PreferencesGroup({
+-            title: 'Chế độ hiển thị Dock',
+-            description: 'Tùy chỉnh hành vi ẩn hoặc giữ cố định thanh Dock trên màn hình',
++            title: 'Dock Visibility',
++            description: 'Choose whether the dock hides or stays on screen',
+         });
+         page.add(behaviorGroup);
+ 
+         const hideModeModel = new Gtk.StringList({
+             strings: [
+-                'Ẩn khi ứng dụng full',
+-                'Luôn ẩn',
+-                'Luôn hiển thị',
++                'Hide when an app is fullscreen',
++                'Always hide',
++                'Always show',
+             ],
+         });
+ 
+         const hideModeRow = new Adw.ComboRow({
+-            title: 'Hành vi thanh Dock',
+-            subtitle: 'Chọn cách thanh Dock xuất hiện khi làm việc với cửa sổ',
++            title: 'Dock Behavior',
++            subtitle: 'Choose how the dock appears while you work with windows',
+             model: hideModeModel,
+         });
+         behaviorGroup.add(hideModeRow);
+@@ -42,11 +42,11 @@
+             const intellihideMode = settings.get_enum('intellihide-mode');
+ 
+             if (dockFixed || (intellihide && intellihideMode === 3)) {
+-                return 2; // Luôn hiển thị (Nổi trên ứng dụng)
++                return 2; // Always show (floats above apps)
+             } else if (autohide && intellihide) {
+-                return 0; // Ẩn khi ứng dụng full
++                return 0; // Hide when an app is fullscreen
+             } else if (autohide && !intellihide) {
+-                return 1; // Luôn ẩn
++                return 1; // Always hide
+             } else {
+                 return 0;
+             }
+@@ -54,18 +54,18 @@
+ 
+         const applyModeIndex = index => {
+             if (index === 0) {
+-                // Ẩn khi ứng dụng full
++                // Hide when an app is fullscreen
+                 settings.set_boolean('dock-fixed', false);
+                 settings.set_boolean('autohide', true);
+                 settings.set_boolean('intellihide', true);
+                 settings.set_enum('intellihide-mode', 2); // MAXIMIZED_WINDOWS
+             } else if (index === 1) {
+-                // Luôn ẩn
++                // Always hide
+                 settings.set_boolean('dock-fixed', false);
+                 settings.set_boolean('autohide', true);
+                 settings.set_boolean('intellihide', false);
+             } else if (index === 2) {
+-                // Luôn hiển thị nổi trên ứng dụng (không làm co cửa sổ hay để khoảng trống bên dưới)
++                // Always show nổi trên ứng dụng (không làm co cửa sổ hay để khoảng trống bên dưới)
+                 settings.set_boolean('dock-fixed', false);
+                 settings.set_boolean('autohide', true);
+                 settings.set_boolean('intellihide', true);
+@@ -95,16 +95,16 @@
+         settings.connect('changed::intellihide', updateRow);
+         settings.connect('changed::intellihide-mode', updateRow);
+ 
+-        // Group 2: Kích thước Dock
++        // Group 2: Dock Size
+         const group = new Adw.PreferencesGroup({
+-            title: 'Kích thước Dock',
+-            description: 'Kéo thanh trượt qua lại để tùy chỉnh độ lớn biểu tượng trên thanh Dock',
++            title: 'Dock Size',
++            description: 'Drag the slider to change the dock icon size',
+         });
+         page.add(group);
+ 
+         const iconSizeRow = new Adw.ActionRow({
+-            title: 'Kích thước biểu tượng',
+-            subtitle: 'Mặc định chuẩn macOS Tahoe là 45px',
++            title: 'Icon Size',
++            subtitle: 'The macOS Tahoe default is 45px',
+         });
+ 
+         const scale = new Gtk.Scale({
+--- a/stylesheet.css
++++ b/stylesheet.css
+@@ -19,6 +19,7 @@
+     margin-bottom: 4px;
+     padding: 0;
+     border-radius: 24px;
++    box-shadow: none;
+     spacing: 6px; }
+   #dashtodockContainer.bottom #dash .dash-separator {
+     background-color: rgba(255, 255, 255, 0.1);
+@@ -73,7 +74,7 @@
+     #dashtodockContainer.bottom #dash .dash-item-container .overview-tile .app-grid-running-dot {
+       margin-bottom: 2px; }
+     #dashtodockContainer.bottom #dash .dash-item-container > StButton {
+-      transition-duration: 250;
++      transition-duration: 150ms;
+       background-size: contain; }
+ 
+ #dashtodockContainer.bottom.fixed #dash .dash-background {
+@@ -150,7 +151,7 @@
+     #dashtodockContainer.bottom.shrink #dash .dash-item-container .overview-tile .app-grid-running-dot {
+       margin-bottom: 2px; }
+     #dashtodockContainer.bottom.shrink #dash .dash-item-container > StButton {
+-      transition-duration: 250;
++      transition-duration: 150ms;
+       background-size: contain; }
+ 
+ #dashtodockContainer.bottom.shrink.fixed #dash .dash-background {
+@@ -235,7 +236,7 @@
+     #dashtodockContainer.bottom.extended #dash .dash-item-container .overview-tile .app-grid-running-dot {
+       margin-bottom: 2px; }
+     #dashtodockContainer.bottom.extended #dash .dash-item-container > StButton {
+-      transition-duration: 250;
++      transition-duration: 150ms;
+       background-size: contain; }
+ 
+ #dashtodockContainer.bottom.extended.fixed #dash .dash-background {
+@@ -320,7 +321,7 @@
+     #dashtodockContainer.bottom.extended.shrink #dash .dash-item-container .overview-tile .app-grid-running-dot {
+       margin-bottom: 2px; }
+     #dashtodockContainer.bottom.extended.shrink #dash .dash-item-container > StButton {
+-      transition-duration: 250;
++      transition-duration: 150ms;
+       background-size: contain; }
+ 
+ #dashtodockContainer.bottom.extended.shrink.fixed #dash .dash-background {
+@@ -404,7 +405,7 @@
+     #dashtodockContainer.top #dash .dash-item-container .overview-tile .app-grid-running-dot {
+       margin-bottom: 2px; }
+     #dashtodockContainer.top #dash .dash-item-container > StButton {
+-      transition-duration: 250;
++      transition-duration: 150ms;
+       background-size: contain; }
+ 
+ #dashtodockContainer.top.fixed #dash .dash-background {
+@@ -481,7 +482,7 @@
+     #dashtodockContainer.top.shrink #dash .dash-item-container .overview-tile .app-grid-running-dot {
+       margin-bottom: 2px; }
+     #dashtodockContainer.top.shrink #dash .dash-item-container > StButton {
+-      transition-duration: 250;
++      transition-duration: 150ms;
+       background-size: contain; }
+ 
+ #dashtodockContainer.top.shrink.fixed #dash .dash-background {
+@@ -566,7 +567,7 @@
+     #dashtodockContainer.top.extended #dash .dash-item-container .overview-tile .app-grid-running-dot {
+       margin-bottom: 2px; }
+     #dashtodockContainer.top.extended #dash .dash-item-container > StButton {
+-      transition-duration: 250;
++      transition-duration: 150ms;
+       background-size: contain; }
+ 
+ #dashtodockContainer.top.extended.fixed #dash .dash-background {
+@@ -651,7 +652,7 @@
+     #dashtodockContainer.top.extended.shrink #dash .dash-item-container .overview-tile .app-grid-running-dot {
+       margin-bottom: 2px; }
+     #dashtodockContainer.top.extended.shrink #dash .dash-item-container > StButton {
+-      transition-duration: 250;
++      transition-duration: 150ms;
+       background-size: contain; }
+ 
+ #dashtodockContainer.top.extended.shrink.fixed #dash .dash-background {
+@@ -731,7 +732,7 @@
+     #dashtodockContainer.left #dash .dash-item-container .overview-tile .app-grid-running-dot {
+       margin-bottom: 2px; }
+     #dashtodockContainer.left #dash .dash-item-container > StButton {
+-      transition-duration: 250;
++      transition-duration: 150ms;
+       background-size: contain; }
+ 
+ #dashtodockContainer.left.fixed #dash .dash-background {
+@@ -804,7 +805,7 @@
+     #dashtodockContainer.left.shrink #dash .dash-item-container .overview-tile .app-grid-running-dot {
+       margin-bottom: 2px; }
+     #dashtodockContainer.left.shrink #dash .dash-item-container > StButton {
+-      transition-duration: 250;
++      transition-duration: 150ms;
+       background-size: contain; }
+ 
+ #dashtodockContainer.left.shrink.fixed #dash .dash-background {
+@@ -885,7 +886,7 @@
+     #dashtodockContainer.left.extended #dash .dash-item-container .overview-tile .app-grid-running-dot {
+       margin-bottom: 2px; }
+     #dashtodockContainer.left.extended #dash .dash-item-container > StButton {
+-      transition-duration: 250;
++      transition-duration: 150ms;
+       background-size: contain; }
+ 
+ #dashtodockContainer.left.extended.fixed #dash .dash-background {
+@@ -966,7 +967,7 @@
+     #dashtodockContainer.left.extended.shrink #dash .dash-item-container .overview-tile .app-grid-running-dot {
+       margin-bottom: 2px; }
+     #dashtodockContainer.left.extended.shrink #dash .dash-item-container > StButton {
+-      transition-duration: 250;
++      transition-duration: 150ms;
+       background-size: contain; }
+ 
+ #dashtodockContainer.left.extended.shrink.fixed #dash .dash-background {
+@@ -1046,7 +1047,7 @@
+     #dashtodockContainer.right #dash .dash-item-container .overview-tile .app-grid-running-dot {
+       margin-bottom: 2px; }
+     #dashtodockContainer.right #dash .dash-item-container > StButton {
+-      transition-duration: 250;
++      transition-duration: 150ms;
+       background-size: contain; }
+ 
+ #dashtodockContainer.right.fixed #dash .dash-background {
+@@ -1119,7 +1120,7 @@
+     #dashtodockContainer.right.shrink #dash .dash-item-container .overview-tile .app-grid-running-dot {
+       margin-bottom: 2px; }
+     #dashtodockContainer.right.shrink #dash .dash-item-container > StButton {
+-      transition-duration: 250;
++      transition-duration: 150ms;
+       background-size: contain; }
+ 
+ #dashtodockContainer.right.shrink.fixed #dash .dash-background {
+@@ -1200,7 +1201,7 @@
+     #dashtodockContainer.right.extended #dash .dash-item-container .overview-tile .app-grid-running-dot {
+       margin-bottom: 2px; }
+     #dashtodockContainer.right.extended #dash .dash-item-container > StButton {
+-      transition-duration: 250;
++      transition-duration: 150ms;
+       background-size: contain; }
+ 
+ #dashtodockContainer.right.extended.fixed #dash .dash-background {
+@@ -1281,7 +1282,7 @@
+     #dashtodockContainer.right.extended.shrink #dash .dash-item-container .overview-tile .app-grid-running-dot {
+       margin-bottom: 2px; }
+     #dashtodockContainer.right.extended.shrink #dash .dash-item-container > StButton {
+-      transition-duration: 250;
++      transition-duration: 150ms;
+       background-size: contain; }
+ 
+ #dashtodockContainer.right.extended.shrink.fixed #dash .dash-background {
+@@ -1403,7 +1404,7 @@
+ #dashtodockContainer.dummy-opaque {
+   background-color: rgba(0, 0, 0, 0.8);
+   border-color: rgba(0, 0, 0, 0.4);
+-  transition-duration: 300ms; }
++  transition-duration: 250ms; }
+ 
+ /*
+  * This is applied to a dummy actor. Only the alpha value for the background and border color
+@@ -1412,7 +1413,7 @@
+ #dashtodockContainer.dummy-transparent {
+   background-color: rgba(0, 0, 0, 0.2);
+   border-color: rgba(0, 0, 0, 0.1);
+-  transition-duration: 500ms; }
++  transition-duration: 250ms; }
+ 
+ #dashtodockContainer .number-overlay,
+ .overview-tile .number-overlay,
+@@ -1425,7 +1426,7 @@
+ .overview-tile .notification-badge,
+ .icon-grid .notification-badge {
+   color: white;
+-  background-color: red;
++  background-color: #ED5F5D;
+   padding: 0.2em 0.5em;
+   border-radius: 1em;
+   font-weight: bold;
+@@ -1476,3 +1477,16 @@
+   background-image: url("./media/highlight_stacked_bg_h.svg");
+   background-position: 0px 0px;
+   background-size: contain; }
++
++/* local: tighter dock icon gaps (original saved as stylesheet.css.bak) */
++#dashtodockContainer.bottom.shrink #dash .dash-item-container {
++  margin: 0; }
++#dashtodockContainer.bottom.shrink #dash .dash-item-container .app-well-app,
++#dashtodockContainer.bottom.shrink #dash .dash-item-container .show-apps,
++#dashtodockContainer.bottom.shrink #dash .dash-item-container .overview-tile {
++  padding-left: 0;
++  padding-right: 0; }
++#dashtodockContainer.bottom.shrink #dash .dash-item-container .show-apps .overview-icon,
++#dashtodockContainer.bottom.shrink #dash .dash-item-container .overview-tile .overview-icon {
++  padding-left: 2px;
++  padding-right: 2px; }

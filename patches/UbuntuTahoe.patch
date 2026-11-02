@@ -1,0 +1,257 @@
+--- a/modules/blur/manager.js
++++ b/modules/blur/manager.js
+@@ -65,7 +65,7 @@
+         }
+ 
+         // Listen for setting changes
+-        this._settings.overview.settings.connect('changed::blur', () => {
++        this._connection.connect(this._settings.overview.settings, 'changed::blur', () => {
+             if (this._settings?.overview?.BLUR) {
+                 this._overview_blur?.enable();
+             } else {
+@@ -73,7 +73,7 @@
+             }
+         });
+ 
+-        this._settings.appfolder.settings.connect('changed::blur', () => {
++        this._connection.connect(this._settings.appfolder.settings, 'changed::blur', () => {
+             if (this._settings?.appfolder?.BLUR) {
+                 this._appfolder_blur?.enable();
+             } else {
+@@ -81,7 +81,7 @@
+             }
+         });
+ 
+-        this._settings.panel.settings.connect('changed::blur', () => {
++        this._connection.connect(this._settings.panel.settings, 'changed::blur', () => {
+             if (this._settings?.panel?.BLUR) {
+                 this._panel_blur?.enable();
+             } else {
+--- a/modules/clock.js
++++ b/modules/clock.js
+@@ -1,5 +1,8 @@
++import GLib from 'gi://GLib';
+ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
+ 
++const CLOCK_FORMAT = '%-I:%M %p  %-d %b %a';
++
+ export class TahoeClockManager {
+     constructor() {
+         this._dateMenu = null;
+@@ -8,6 +11,8 @@
+         this._panelBoxes = null;
+         this._signals = [];
+         this._repositioning = false;
++        this._wallClock = null;
++        this._clockSignal = 0;
+     }
+ 
+     enable(targetBoxIndex = 1, targetOffset = 20) {
+@@ -30,6 +35,16 @@
+                 }
+             });
+         });
++
++        // Runs after GNOME's own clock binding, so this text wins
++        this._wallClock = this._dateMenu._clock;
++        this._clockSignal = this._wallClock.connect('notify::clock', () => this._formatClock());
++        this._formatClock();
++    }
++
++    _formatClock() {
++        const now = GLib.DateTime.new_now(this._wallClock.timezone);
++        this._dateMenu._clockDisplay.text = now.format(CLOCK_FORMAT);
+     }
+ 
+     _applyPosition(targetBoxIndex, targetOffset) {
+@@ -60,7 +75,10 @@
+ 
+         const targetBox = this._panelBoxes[targetBoxIndex];
+         const children = targetBox.get_children();
+-        const destIndex = Math.min(targetOffset, children.length);
++        // Already in the target box: its own slot doesn't count, or a clock at
++        // the end never matches and every child-added re-inserts it.
++        const lastIndex = children.length - (fromBoxIndex === targetBoxIndex ? 1 : 0);
++        const destIndex = Math.min(targetOffset, lastIndex);
+ 
+         if (fromBoxIndex === targetBoxIndex && fromIndex === destIndex) {
+             return;
+@@ -76,6 +94,13 @@
+     }
+ 
+     disable() {
++        if (this._clockSignal) {
++            this._wallClock.disconnect(this._clockSignal);
++            this._clockSignal = 0;
++            this._dateMenu._clockDisplay.text = this._wallClock.clock;
++            this._wallClock = null;
++        }
++
+         if (this._signals.length > 0 && this._panelBoxes) {
+             this._panelBoxes.forEach((box, i) => {
+                 if (this._signals[i]) {
+--- a/modules/globalmenu/manager.js
++++ b/modules/globalmenu/manager.js
+@@ -1,3 +1,4 @@
++import Shell from 'gi://Shell';
+ import * as Main from "resource:///org/gnome/shell/ui/main.js";
+ import { MenuManager } from './menuManager.js';
+ import { SystemMenuButton } from './systemMenu.js';
+@@ -33,6 +34,13 @@
+         });
+ 
+         global.display.connectObject('notify::focus-window', () => {
++            // Same app and windows: the menus are already right
++            const win = global.display.get_focus_window();
++            const app = win && Shell.WindowTracker.get_default().get_window_app(win);
++            const key = `${app?.get_id() ?? win?.get_wm_class() ?? ''}:${app?.get_windows().map(w => w.get_id()).sort() ?? ''}`;
++            if (key === this._menuKey)
++                return;
++            this._menuKey = key;
+             this._syncMenuVisibility();
+         }, this);
+ 
+--- a/modules/globalmenu/menuManager.js
++++ b/modules/globalmenu/menuManager.js
+@@ -3,6 +3,7 @@
+ import Clutter from 'gi://Clutter';
+ import GLib from 'gi://GLib';
+ import Gio from 'gi://Gio';
++import Meta from 'gi://Meta';
+ import Shell from 'gi://Shell';
+ import * as PanelMenu from "resource:///org/gnome/shell/ui/panelMenu.js";
+ import * as PopupMenu from "resource:///org/gnome/shell/ui/popupMenu.js";
+@@ -90,7 +91,11 @@
+         let display = global.display;
+         let window = display.get_focus_window();
+ 
+-        if (action === "close") {
++        if (action === "quit-app") {
++            if (this._appInstance) this._appInstance.request_quit();
++            else if (window) window.delete(global.get_current_time());
++            return true;
++        } else if (action === "close") {
+             if (window) window.delete(global.get_current_time());
+             return true;
+         } else if (action === "minimize") {
+@@ -164,10 +169,10 @@
+                 spawnCommand(['gio', 'trash', '--empty']);
+                 return true;
+             } else if (action === "open-system-help") {
+-                spawnCommand(['yelp']);
++                spawnCommand(['xdg-open', 'https://help.gnome.org/']);
+                 return true;
+             } else if (action === "go-recents") {
+-                spawnCommand(['xdg-open', 'recent:///']);
++                spawnCommand(['dolphin', 'recentlyused:/files']);
+                 return true;
+             } else if (action === "go-documents") {
+                 let path = GLib.get_user_special_dir(GLib.UserDirectory.DIRECTORY_DOCUMENTS) || `${GLib.get_home_dir()}/Documents`;
+@@ -187,9 +192,9 @@
+         }
+ 
+         try {
+-            let seat = Clutter.get_default_backend().get_default_seat();
++            let seat = global.stage.context.get_backend().get_default_seat();
+             let virtualDevice = seat.create_virtual_device(Clutter.InputDeviceType.KEYBOARD_DEVICE);
+-            
++
+             if (virtualDevice) {
+                 if (action === "native-open-with") {
+                     let timeUs = GLib.get_monotonic_time();
+@@ -229,7 +234,7 @@
+                 else if (action === "undo") actionScanCode = 44;   
+                 else if (action === "redo") actionScanCode = 21;   
+                 else if (action === "select-all") actionScanCode = 30; 
+-                else if (action === "new-tab") actionScanCode = 28;    
++                else if (action === "new-tab") actionScanCode = 20; // Ctrl + T
+                 else if (action === "print") actionScanCode = 25; // Ctrl + P
+                 else if (action === "emoji-picker") actionScanCode = 52; // Ctrl + . (Period)
+                 else if (action === "toggle-fullscreen") {
+@@ -282,22 +287,22 @@
+     // as a real key event, for user-defined custom shortcuts.
+     _sendAccelerator(accel) {
+         try {
+-            let [success, keyval, mods] = Clutter.accelerator_parse(accel);
+-            if (!success) {
++            // Clutter.accelerator_parse no longer exists on GNOME 51
++            const MOD_KEYS = {
++                control: Clutter.KEY_Control_L, ctrl: Clutter.KEY_Control_L, primary: Clutter.KEY_Control_L,
++                shift: Clutter.KEY_Shift_L, alt: Clutter.KEY_Alt_L, super: Clutter.KEY_Super_L,
++            };
++            let modKeyvals = [...accel.matchAll(/<(\w+)>/g)].map(m => MOD_KEYS[m[1].toLowerCase()]);
++            let keyval = Clutter[`KEY_${accel.replace(/<\w+>/g, '')}`];
++            if (!keyval || modKeyvals.includes(undefined)) {
+                 logError(`[globalmenu] Could not parse shortcut '${accel}'`);
+                 return;
+             }
+ 
+-            let seat = Clutter.get_default_backend().get_default_seat();
++            let seat = global.stage.context.get_backend().get_default_seat();
+             let virtualDevice = seat.create_virtual_device(Clutter.InputDeviceType.KEYBOARD_DEVICE);
+             if (!virtualDevice) return;
+ 
+-            let modKeyvals = [];
+-            if (mods & Clutter.ModifierType.CONTROL_MASK) modKeyvals.push(Clutter.KEY_Control_L);
+-            if (mods & Clutter.ModifierType.SHIFT_MASK) modKeyvals.push(Clutter.KEY_Shift_L);
+-            if (mods & Clutter.ModifierType.MOD1_MASK) modKeyvals.push(Clutter.KEY_Alt_L);
+-            if (mods & Clutter.ModifierType.SUPER_MASK) modKeyvals.push(Clutter.KEY_Super_L);
+-
+             let t = GLib.get_monotonic_time();
+             modKeyvals.forEach(k => {
+                 virtualDevice.notify_keyval(t, k, Clutter.KeyState.PRESSED);
+@@ -357,7 +362,13 @@
+             menuItem.setSensitive(false);
+           } else if (item.action) {
+             menuItem.connect("activate", () => {
+-              this._executeNativeAction(item.action);
++              // Keys sent now would hit the menu's own grab, never the app
++              const timeoutId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 150, () => {
++                this._timeoutIds = this._timeoutIds.filter(id => id !== timeoutId);
++                this._executeNativeAction(item.action);
++                return GLib.SOURCE_REMOVE;
++              });
++              this._timeoutIds.push(timeoutId);
+             });
+           }
+           parentMenu.addMenuItem(menuItem);
+@@ -397,16 +408,16 @@
+         if (window) {
+             let windowType = window.get_window_type();
+ 
+-            if (windowType === 0) {
++            // App dialogs keep the app's menus instead of falling back to the desktop's
++            if ([Meta.WindowType.NORMAL, Meta.WindowType.DIALOG, Meta.WindowType.MODAL_DIALOG].includes(windowType)) {
+                 let tracker = Shell.WindowTracker.get_default();
+                 detectedApp = tracker.get_window_app(window);
+ 
+                 let checkId = detectedApp ? (detectedApp.get_id() || "") : "";
+                 let checkName = detectedApp ? (detectedApp.get_name() || "") : "";
+                 let wmClass = window.get_wm_class() || "";
+-                let title = window.get_title() || "";
+ 
+-                let combinedIdentifiers = `${checkId} ${checkName} ${wmClass} ${title}`.toLowerCase();
++                let combinedIdentifiers = `${checkId} ${checkName} ${wmClass}`.toLowerCase();
+ 
+                 let isBlacklisted = this._blacklist.some(item =>
+                     combinedIdentifiers.includes(item.toLowerCase())
+@@ -450,7 +461,7 @@
+                 { type: "separator" },
+                 { label: "App Details", action: `app-details:${desktopId}` },
+                 { type: "separator" },
+-                { label: `Quit ${appName}`, action: "close" }
++                { label: `Quit ${appName}`, action: "quit-app" }
+             );
+         } else {
+             firstMenuChildren = [
+--- a/modules/globalmenu/systemMenu.js
++++ b/modules/globalmenu/systemMenu.js
+@@ -107,7 +107,7 @@
+     _rebuildMenu() {
+         this.menu.removeAll();
+ 
+-        const hideOverview = this._settings.get_boolean('hide-overview-button');
++        const hideOverview = !Main.panel.statusArea.activities?.container?.visible;
+         const showAppGrid = this._settings.get_boolean('show-app-grid');
+         const showSoftwareCenter = this._settings.get_boolean('show-software-center');
+         const showSystemMonitor = this._settings.get_boolean('show-system-monitor');

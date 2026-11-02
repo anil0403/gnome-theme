@@ -1,0 +1,432 @@
+--- a/extension.js
++++ b/extension.js
+@@ -35,6 +35,10 @@
+ }
+ 
+ const HISTORY_PATH = GLib.build_filenamev([GLib.get_user_data_dir(), 'clipboard-manager', 'history.json']);
++const MAX_ENTRY_CHARS = 64 * 1024;
++const SAVE_DELAY_MS = 500;
++// Set by KeePassXC, Bitwarden and other password managers on secrets
++const PASSWORD_HINT_MIME = 'x-kde-passwordManagerHint';
+ 
+ const ClipboardItem = GObject.registerClass(
+ class ClipboardItem extends PopupMenu.PopupBaseMenuItem {
+@@ -63,7 +67,7 @@
+ 
+         let previewText = (entry.text || '').trim().replace(/[\r\n\t]+/g, ' ');
+         if (previewText.length > 50) {
+-            previewText = previewText.slice(0, 48) + '...';
++            previewText = previewText.slice(0, 49) + '…';
+         }
+ 
+         const label = new St.Label({
+@@ -77,8 +81,9 @@
+         const delBtn = new St.Button({
+             style_class: 'button tahoe-clip-delete-btn',
+             can_focus: true,
++            accessible_name: 'Delete this item',
+             child: new St.Icon({
+-                icon_name: 'user-trash-symbolic',
++                icon_name: 'window-close-symbolic',
+                 icon_size: 14,
+             }),
+         });
+@@ -99,12 +104,14 @@
+ const ClipboardIndicator = GObject.registerClass(
+ class ClipboardIndicator extends PanelMenu.Button {
+     _init(extension) {
+-        super._init(0.5, 'UbuntuTahoeClipboard');
++        super._init(0.5, 'Clipboard');
+ 
+         this._extension = extension;
+         this._settings = extension.getSettings();
+         this._historyPath = HISTORY_PATH;
+         this._lastCopiedText = null;
++        this._saveTimeoutId = 0;
++        this._destroyed = false;
+         this._history = this._loadHistory();
+ 
+         // Icon on Top Bar
+@@ -121,8 +128,18 @@
+         const selection = global.display.get_selection();
+         this._selectionOwnerChangedId = selection.connect('owner-changed', (_sel, type) => {
+             if (type === Meta.SelectionType.SELECTION_CLIPBOARD) {
++                const isSecret = selection.get_mimetypes(type).includes(PASSWORD_HINT_MIME);
+                 St.Clipboard.get_default().get_text(St.ClipboardType.CLIPBOARD, (_clip, text) => {
+-                    if (text && text.trim().length > 0 && text !== this._lastCopiedText) {
++                    if (this._destroyed)
++                        return;
++                    // Remember it unsaved: when the app quits, Mutter re-owns the
++                    // text without the hint, and that copy must be skipped too.
++                    if (isSecret) {
++                        this._lastCopiedText = text;
++                        return;
++                    }
++                    if (text && text.trim().length > 0 && text.length <= MAX_ENTRY_CHARS &&
++                        text !== this._lastCopiedText) {
+                         this._lastCopiedText = text;
+                         this._addEntry(text);
+                     }
+@@ -161,7 +178,7 @@
+         });
+ 
+         this._headerLabel = new St.Label({
+-            text: `Bảng nhớ tạm (${this._history.length}/20)`,
++            text: this._headerText(),
+             x_expand: true,
+             y_align: Clutter.ActorAlign.CENTER,
+             style_class: 'tahoe-clip-header-title',
+@@ -169,12 +186,10 @@
+         headerBox.add_child(this._headerLabel);
+ 
+         const clearBtn = new St.Button({
+-            style_class: 'button tahoe-clip-delete-btn',
++            style_class: 'button tahoe-clip-clear-btn',
+             can_focus: true,
+-            child: new St.Icon({
+-                icon_name: 'user-trash-symbolic',
+-                icon_size: 14,
+-            }),
++            accessible_name: 'Clear clipboard history',
++            label: 'Clear All',
+         });
+         clearBtn.connect('clicked', () => {
+             this._clearAll();
+@@ -192,7 +207,7 @@
+             style_class: 'tahoe-clip-search-item',
+         });
+         this._searchEntry = new St.Entry({
+-            hint_text: 'Tìm kiếm lịch sử (Win + Alt + Space)...',
++            hint_text: 'Search history…',
+             x_expand: true,
+             style_class: 'tahoe-clip-search-entry search-entry',
+         });
+@@ -227,6 +242,10 @@
+         this._renderItems('');
+     }
+ 
++    _headerText() {
++        return `Clipboard (${this._history.length}/${this._settings.get_int('history-size')})`;
++    }
++
+     _renderItems(filterQuery = '') {
+         this._listSection.removeAll();
+ 
+@@ -237,12 +256,12 @@
+         }
+ 
+         if (this._headerLabel) {
+-            this._headerLabel.set_text(`Bảng nhớ tạm (${this._history.length}/20)`);
++            this._headerLabel.set_text(this._headerText());
+         }
+ 
+         if (filtered.length === 0) {
+             const emptyItem = new PopupMenu.PopupMenuItem(
+-                filterQuery ? 'Không tìm thấy kết quả phù hợp' : 'Chưa có nội dung sao chép',
++                filterQuery ? 'No matching results' : 'Nothing copied yet',
+                 { reactive: false, style_class: 'tahoe-clip-menu-item' }
+             );
+             this._listSection.addMenuItem(emptyItem);
+@@ -276,10 +295,7 @@
+             length: text.length,
+         });
+ 
+-        const maxItems = 20;
+-        if (this._history.length > maxItems) {
+-            this._history = this._history.slice(0, maxItems);
+-        }
++        this._history = this._history.slice(0, this._settings.get_int('history-size'));
+ 
+         this._saveHistory();
+         this._renderItems(this._searchEntry ? this._searchEntry.get_text() : '');
+@@ -299,12 +315,14 @@
+ 
+     _deleteItem(entry) {
+         this._history = this._history.filter(item => item.text !== entry.text);
++        this._lastCopiedText = null;
+         this._saveHistory();
+         this._renderItems(this._searchEntry ? this._searchEntry.get_text() : '');
+     }
+ 
+     _clearAll() {
+         this._history = [];
++        this._lastCopiedText = null;
+         this._saveHistory();
+         this._renderItems('');
+     }
+@@ -316,7 +334,7 @@
+                 if (ok) {
+                     const decoder = new TextDecoder('utf-8');
+                     const data = JSON.parse(decoder.decode(bytes));
+-                    return Array.isArray(data) ? data.slice(0, 20) : [];
++                    return Array.isArray(data) ? data.slice(0, this._settings.get_int('history-size')) : [];
+                 }
+             }
+         } catch (e) {
+@@ -325,29 +343,47 @@
+         return [];
+     }
+ 
++    _historyBytes() {
++        return new TextEncoder().encode(JSON.stringify(this._history, null, 2));
++    }
++
++    // Debounced so a burst of copies never blocks the compositor on disk I/O
+     _saveHistory() {
++        if (this._saveTimeoutId)
++            return;
++        this._saveTimeoutId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, SAVE_DELAY_MS, () => {
++            this._saveTimeoutId = 0;
++            GLib.mkdir_with_parents(GLib.path_get_dirname(this._historyPath), 0o700);
++            Gio.File.new_for_path(this._historyPath).replace_contents_bytes_async(
++                new GLib.Bytes(this._historyBytes()), null, false,
++                Gio.FileCreateFlags.REPLACE_DESTINATION | Gio.FileCreateFlags.PRIVATE, null,
++                (file, res) => {
++                    try {
++                        file.replace_contents_finish(res);
++                    } catch (e) {
++                        console.error('[UbuntuTahoeClipboard] Error saving history:', e);
++                    }
++                });
++            return GLib.SOURCE_REMOVE;
++        });
++    }
++
++    _flushHistory() {
++        if (!this._saveTimeoutId)
++            return;
++        GLib.source_remove(this._saveTimeoutId);
++        this._saveTimeoutId = 0;
+         try {
+-            const dir = GLib.path_get_dirname(this._historyPath);
+-            GLib.mkdir_with_parents(dir, 0o755);
+-            const jsonStr = JSON.stringify(this._history, null, 2);
+-            GLib.file_set_contents(this._historyPath, jsonStr);
++            GLib.mkdir_with_parents(GLib.path_get_dirname(this._historyPath), 0o700);
++            GLib.file_set_contents_full(this._historyPath, this._historyBytes(),
++                GLib.FileSetContentsFlags.CONSISTENT, 0o600);
+         } catch (e) {
+             console.error('[UbuntuTahoeClipboard] Error saving history:', e);
+         }
+     }
+ 
+     _bindShortcut() {
+-        // 1. Permanently remove conflict from GNOME default message tray
+-        try {
+-            const gnomeKeybindings = new Gio.Settings({ schema_id: 'org.gnome.shell.keybindings' });
+-            const msgTray = gnomeKeybindings.get_strv('toggle-message-tray');
+-            if (msgTray.includes('<Super>v')) {
+-                const filtered = msgTray.filter(k => k !== '<Super>v');
+-                gnomeKeybindings.set_strv('toggle-message-tray', filtered.length > 0 ? filtered : ['<Super>m']);
+-            }
+-        } catch (e) {}
+-
+-        // 2. Default to Super + Alt + Space
++        // 1. Default to Super + Alt + Space
+         try {
+             const current = this._settings.get_strv('toggle-menu');
+             if (!current || current.length === 0 || current.includes('<Super>v')) {
+@@ -355,7 +391,7 @@
+             }
+         } catch (e) {}
+ 
+-        // 3. Register global keybinding across ALL modes (NORMAL, OVERVIEW, POPUP, MODAL, FULLSCREEN)
++        // 2. Register global keybinding across ALL modes (NORMAL, OVERVIEW, POPUP, MODAL, FULLSCREEN)
+         try {
+             Main.wm.addKeybinding(
+                 'toggle-menu',
+@@ -378,6 +414,8 @@
+     }
+ 
+     destroy() {
++        this._destroyed = true;
++        this._flushHistory();
+         this._unbindShortcut();
+ 
+         if (this._selectionOwnerChangedId) {
+--- a/metadata.json
++++ b/metadata.json
+@@ -1,6 +1,6 @@
+ {
+   "name": "UbuntuTahoeClipboard",
+-  "description": "Quản lý lịch sử sao chép phong cách macOS Tahoe (Lưu tối đa 20 mục, phím tắt Win + Alt + Space)",
++  "description": "macOS Tahoe style clipboard history (keeps up to 20 items, shortcut Win + Alt + Space)",
+   "uuid": "UbuntuTahoeClipboard@adfoxtheme.github.io",
+   "settings-schema": "org.gnome.shell.extensions.ubuntutahoeclipboard",
+   "shell-version": [
+--- a/schemas/org.gnome.shell.extensions.ubuntutahoeclipboard.gschema.xml
++++ b/schemas/org.gnome.shell.extensions.ubuntutahoeclipboard.gschema.xml
+@@ -3,13 +3,13 @@
+   <schema id="org.gnome.shell.extensions.ubuntutahoeclipboard" path="/org/gnome/shell/extensions/ubuntutahoeclipboard/">
+     <key name="toggle-menu" type="as">
+       <default><![CDATA[['<Super><Alt>space']]]></default>
+-      <summary>Phím tắt mở menu Clipboard</summary>
+-      <description>Tổ hợp phím để bật tắt menu lịch sử sao chép</description>
++      <summary>Shortcut to open the Clipboard menu</summary>
++      <description>Key combination that toggles the clipboard history menu</description>
+     </key>
+     <key name="history-size" type="i">
+       <default>20</default>
+-      <summary>Số lượng mục lưu tối đa</summary>
+-      <description>Lưu tối đa 20 mục gần nhất</description>
++      <summary>Maximum saved items</summary>
++      <description>Keep up to the 20 most recent items</description>
+     </key>
+   </schema>
+ </schemalist>
+--- a/stylesheet.css
++++ b/stylesheet.css
+@@ -1,4 +1,4 @@
+-/* UbuntuTahoeClipboard styling - Pixel perfect alignment */
++/* UbuntuTahoeClipboard styling */
+ 
+ /* Header Item */
+ .tahoe-clip-header-item {
+@@ -12,9 +12,9 @@
+ }
+ 
+ .tahoe-clip-header-title {
+-    font-weight: bold;
+-    font-size: 13.5px;
+-    color: #e0e0e0;
++    font-weight: 600;
++    font-size: 10pt;
++    color: #ffffff;
+ }
+ 
+ /* Search Item */
+@@ -26,12 +26,12 @@
+ 
+ .tahoe-clip-search-entry {
+     min-width: 320px;
+-    border-radius: 8px;
++    border-radius: 10px;
+     padding: 6px 10px;
+     background-color: rgba(255, 255, 255, 0.08);
+     border: 1px solid rgba(255, 255, 255, 0.12);
+     color: #ffffff;
+-    font-size: 13px;
++    font-size: 10pt;
+ }
+ 
+ .tahoe-clip-search-entry:focus {
+@@ -49,8 +49,8 @@
+ .tahoe-clip-menu-item {
+     margin: 2px 8px !important;
+     padding: 6px 10px !important;
+-    border-radius: 8px !important;
+-    transition: background-color 150ms ease;
++    border-radius: 10px !important;
++    transition-duration: 100ms;
+ }
+ 
+ .tahoe-clip-item-box {
+@@ -63,28 +63,46 @@
+ }
+ 
+ .tahoe-clip-label {
+-    font-size: 13px;
+-    color: #e8e8e8;
++    font-size: 10pt;
++    color: #ffffff;
+ }
+ 
+-/* Delete / Clear buttons */
+-.tahoe-clip-delete-btn {
++/* Delete and Clear All buttons */
++.tahoe-clip-delete-btn,
++.tahoe-clip-clear-btn {
+     padding: 4px 8px;
+     border-radius: 6px;
+-    opacity: 0.55;
+     background-color: transparent;
+     border: none;
+     box-shadow: none;
+-    transition: all 150ms ease;
++    transition-duration: 100ms;
+ }
+ 
+-.tahoe-clip-delete-btn:hover {
++.tahoe-clip-delete-btn {
++    opacity: 0.65;
++}
++
++.tahoe-clip-clear-btn {
++    font-size: 9pt;
++    color: rgba(255, 255, 255, 0.65);
++}
++
++.tahoe-clip-delete-btn:hover,
++.tahoe-clip-clear-btn:hover {
+     opacity: 1.0;
+-    background-color: rgba(255, 255, 255, 0.18);
++    color: #ffffff;
++    background-color: rgba(255, 255, 255, 0.14);
+ }
+ 
+-.tahoe-clip-delete-btn:active {
+-    background-color: rgba(255, 255, 255, 0.28);
++.tahoe-clip-delete-btn:active,
++.tahoe-clip-clear-btn:active {
++    background-color: rgba(255, 255, 255, 0.24);
++}
++
++.tahoe-clip-delete-btn:focus,
++.tahoe-clip-clear-btn:focus {
++    opacity: 1.0;
++    box-shadow: inset 0 0 0 2px -st-accent-color;
+ }
+ 
+ /* Scrollable List Section */
+@@ -92,51 +110,3 @@
+     max-height: 400px;
+     padding: 0;
+ }
+-
+-.tahoe-clip-scrollview StScrollBar,
+-.tahoe-clip-scrollbar {
+-    min-width: 6px !important;
+-    margin: 4px 4px 4px 2px !important;
+-    padding: 0 !important;
+-}
+-
+-/* Scrollbar Track (Trough) */
+-.tahoe-clip-trough,
+-.tahoe-clip-scrollview #trough,
+-.tahoe-clip-scrollbar #trough {
+-    background-color: rgba(255, 255, 255, 0.06) !important;
+-    border-radius: 9999px !important;
+-}
+-
+-/* Scrollbar Drag Handle (Thumb) */
+-.tahoe-clip-handle,
+-.vhandle,
+-.tahoe-clip-scrollview .vhandle,
+-.tahoe-clip-scrollview StWidget.vhandle,
+-.tahoe-clip-scrollbar .vhandle,
+-.tahoe-clip-scrollbar StWidget.vhandle,
+-.tahoe-clip-scrollbar StWidget {
+-    background-color: -st-accent-color !important;
+-    border-radius: 9999px !important;
+-    border: none !important;
+-    min-height: 32px !important;
+-    min-width: 5px !important;
+-}
+-
+-.tahoe-clip-handle:hover,
+-.vhandle:hover,
+-.tahoe-clip-scrollview .vhandle:hover,
+-.tahoe-clip-scrollview StWidget.vhandle:hover,
+-.tahoe-clip-scrollbar .vhandle:hover,
+-.tahoe-clip-scrollbar StWidget:hover {
+-    background-color: st-lighten(-st-accent-color, 15%) !important;
+-}
+-
+-.tahoe-clip-handle:active,
+-.vhandle:active,
+-.tahoe-clip-scrollview .vhandle:active,
+-.tahoe-clip-scrollview StWidget.vhandle:active,
+-.tahoe-clip-scrollbar .vhandle:active,
+-.tahoe-clip-scrollbar StWidget:active {
+-    background-color: st-darken(-st-accent-color, 10%) !important;
+-}

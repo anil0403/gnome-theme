@@ -1,0 +1,475 @@
+--- a/extension.js
++++ b/extension.js
+@@ -7,7 +7,6 @@
+ import Meta from 'gi://Meta';
+ import Shell from 'gi://Shell';
+ import GLib from 'gi://GLib';
+-import Gio from 'gi://Gio';
+ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
+ import * as ModalDialog from 'resource:///org/gnome/shell/ui/modalDialog.js';
+ import * as AnimationUtils from 'resource:///org/gnome/shell/misc/animationUtils.js';
+@@ -148,7 +147,7 @@
+ 
+         this._entry = new St.Entry({
+             style_class: 'tahoe-spotlight-entry',
+-            hint_text: 'Tìm kiếm ứng dụng, tính toán nhanh...',
++            hint_text: 'Search apps, quick calculations...',
+             can_focus: true,
+             x_expand: true,
+         });
+@@ -233,18 +232,12 @@
+         });
+ 
+         const hintLabel = new St.Label({
+-            text: '↑↓ Di chuyển  •  ↵ Mở ứng dụng  •  ESC Đóng',
++            text: '↑↓ Navigate  •  ↵ Open',
+             style_class: 'tahoe-spotlight-footer-hint',
+             x_expand: true,
+         });
+         footerBox.add_child(hintLabel);
+ 
+-        const brandLabel = new St.Label({
+-            text: 'Spotlight Tahoe',
+-            style_class: 'tahoe-spotlight-footer-brand',
+-        });
+-        footerBox.add_child(brandLabel);
+-
+         mainContainer.add_child(footerBox);
+ 
+         this.contentLayout.add_child(mainContainer);
+@@ -257,10 +250,13 @@
+         const installed = appSys.get_installed() || [];
+         this._indexedApps = [];
+ 
+-        for (const app of installed) {
+-            if (!shouldShowApp(app)) continue;
++        // get_installed() returns GAppInfos; everything below needs Shell.Apps
++        for (const appInfo of installed) {
++            if (!appInfo.should_show()) continue;
++
++            const app = appSys.lookup_app(appInfo.get_id());
++            if (!app) continue;
+ 
+-            const appInfo = app.app_info || (typeof app.get_app_info === 'function' ? app.get_app_info() : null);
+             const rawName = (app.get_name() || '').toLowerCase();
+             const cleanName = removeVietnameseDiacritics(rawName);
+             const rawDesc = (app.get_description() || '').toLowerCase();
+@@ -367,11 +363,6 @@
+         this._entry.set_text('');
+         this._lastQuery = '';
+         this._updateResults('');
+-
+-        GLib.idle_add(GLib.PRIORITY_DEFAULT, () => {
+-            this._entry.clutter_text.grab_key_focus();
+-            return GLib.SOURCE_REMOVE;
+-        });
+     }
+ 
+     close() {
+@@ -426,7 +417,7 @@
+             emptyBox.add_child(emptyIcon);
+ 
+             const emptyLabel = new St.Label({
+-                text: `Không tìm thấy ứng dụng nào cho "${trimmed}"`,
++                text: `No apps found for "${trimmed}"`,
+                 style_class: 'tahoe-spotlight-empty-label',
+             });
+             emptyBox.add_child(emptyLabel);
+@@ -445,8 +436,9 @@
+                 reactive: true,
+                 can_focus: true,
+                 track_hover: true,
+-                button_mask: St.ButtonMask.PRIMARY | St.ButtonMask.ONE,
++                button_mask: St.ButtonMask.ONE,
+                 x_expand: true,
++                accessible_name: item.title,
+             });
+ 
+             const row = new St.BoxLayout({
+@@ -498,22 +490,16 @@
+ 
+             btn.set_child(row);
+ 
+-            // Handle click via both 'clicked' and 'button-release-event'
+             btn.connect('clicked', () => {
+                 this._activateItem(index);
+             });
+ 
+-            btn.connect('button-release-event', (actor, event) => {
+-                if (event.get_button() === 1) {
+-                    this._activateItem(index);
+-                    return Clutter.EVENT_STOP;
+-                }
+-                return Clutter.EVENT_PROPAGATE;
+-            });
+-
+-            btn.connect('notify::hover', () => {
+-                if (btn.hover)
++            // Real pointer motion only: a resting pointer must not steal the
++            // selection when results are rebuilt underneath it while typing.
++            btn.connect('motion-event', () => {
++                if (index !== this._selectedIndex)
+                     this._selectItem(index, false);
++                return Clutter.EVENT_PROPAGATE;
+             });
+ 
+             this._itemWidgets.push(btn);
+@@ -526,36 +512,19 @@
+     _createItemIcon(item) {
+         const bin = new St.Bin({
+             style_class: 'tahoe-spotlight-icon-bin',
+-            width: 42,
+-            height: 42,
+             x_align: Clutter.ActorAlign.CENTER,
+             y_align: Clutter.ActorAlign.CENTER,
+         });
+ 
+         let iconActor = null;
+         if (item.app) {
+-            try {
+-                iconActor = item.app.create_icon_texture(36);
+-            } catch (e) {}
+-
+-            if (!iconActor) {
+-                try {
+-                    const gicon = (typeof item.app.get_icon === 'function' ? item.app.get_icon() : null) ||
+-                                  (item.app.app_info ? item.app.app_info.get_icon() : null);
+-                    if (gicon) {
+-                        iconActor = new St.Icon({
+-                            gicon: gicon,
+-                            icon_size: 36,
+-                        });
+-                    }
+-                } catch (e) {}
+-            }
++            iconActor = item.app.create_icon_texture(32);
+         }
+ 
+         if (!iconActor) {
+             iconActor = new St.Icon({
+                 icon_name: item.iconName || 'application-x-executable-symbolic',
+-                icon_size: 28,
++                icon_size: 24,
+                 style_class: 'tahoe-spotlight-item-icon',
+             });
+         }
+@@ -600,47 +569,19 @@
+ 
+     _activateItem(index) {
+         const item = this._results[index];
+-        if (!item) return;
++        // Enter fires both the key controller and the entry's activate signal
++        if (!item || this.state !== ModalDialog.State.OPENED) return;
+ 
+-        // Close Spotlight
+         this.close();
+ 
+-        // Authentic Launcher Behavior:
+-        // 1. If app is already open -> raise and focus the existing window (NEVER open duplicate window)
+-        // 2. If app is not running -> launch it
+         try {
+-            if (item.app) {
+-                const app = item.app;
+-                const windows = (typeof app.get_windows === 'function' ? app.get_windows() : []) || [];
+-
+-                if (windows.length > 0) {
+-                    // Focus existing open window
+-                    Main.activateWindow(windows[0]);
+-                    return;
+-                }
+-
+-                // Launch app
+-                try {
+-                    app.activate();
+-                } catch (e1) {
+-                    const appInfo = app.app_info || Gio.DesktopAppInfo.new(app.get_id());
+-                    if (appInfo && typeof appInfo.launch === 'function') {
+-                        appInfo.launch([], null);
+-                    }
+-                }
+-            } else if (item.action) {
+-                item.action();
+-            }
++            // Shell.App.activate() raises a running app, else launches it
++            if (item.app)
++                item.app.activate();
++            else
++                item.action?.();
+         } catch (err) {
+             console.error('[UbuntuTahoeSpotlight] App launch error:', err);
+-            try {
+-                if (item?.app) {
+-                    const appInfo = Gio.DesktopAppInfo.new(item.app.get_id());
+-                    if (appInfo) {
+-                        appInfo.launch([], null);
+-                    }
+-                }
+-            } catch (e2) {}
+         }
+     }
+ 
+@@ -659,19 +600,19 @@
+             if (typeof res === 'number' && Number.isFinite(res)) {
+                 let formatted;
+                 if (Number.isInteger(res)) {
+-                    formatted = res.toLocaleString('vi-VN');
++                    formatted = res.toLocaleString('en-US');
+                 } else {
+-                    formatted = parseFloat(res.toFixed(6)).toLocaleString('vi-VN');
++                    formatted = parseFloat(res.toFixed(6)).toLocaleString('en-US');
+                 }
+ 
+                 return {
+                     title: `= ${formatted}`,
+-                    subtitle: `Tính: ${trimmed} (Nhấn Enter để sao chép)`,
+-                    badge: 'MÁY TÍNH',
++                    subtitle: `Calculate: ${trimmed} (press Enter to copy)`,
++                    badge: 'CALCULATOR',
+                     iconName: 'accessories-calculator-symbolic',
+                     action: () => {
+                         St.Clipboard.get_default().set_text(St.ClipboardType.CLIPBOARD, String(res));
+-                        Main.notify('Spotlight', `Đã sao chép kết quả: ${formatted}`);
++                        Main.notify('Spotlight', `Copied result: ${formatted}`);
+                     },
+                 };
+             }
+@@ -725,8 +666,8 @@
+             const isRunning = app.state !== Shell.AppState.STOPPED;
+             return {
+                 title: app.get_name(),
+-                subtitle: isRunning ? 'Đang chạy' : (app.get_description() || 'Ứng dụng'),
+-                badge: isRunning ? 'ĐANG CHẠY' : 'ỨNG DỤNG',
++                subtitle: isRunning ? 'Running' : (app.get_description() || 'App'),
++                badge: isRunning ? 'RUNNING' : 'APP',
+                 app: app,
+             };
+         });
+@@ -745,8 +686,8 @@
+                     const isRunning = app.state !== Shell.AppState.STOPPED;
+                     results.push({
+                         title: app.get_name(),
+-                        subtitle: isRunning ? 'Đang chạy' : (app.get_description() || 'Ứng dụng yêu thích'),
+-                        badge: isRunning ? 'ĐANG CHẠY' : 'YÊU THÍCH',
++                        subtitle: isRunning ? 'Running' : (app.get_description() || 'Favorite app'),
++                        badge: isRunning ? 'RUNNING' : 'FAVORITE',
+                         app: app,
+                     });
+                 }
+--- a/metadata.json
++++ b/metadata.json
+@@ -1,6 +1,6 @@
+ {
+   "name": "UbuntuTahoeSpotlight",
+-  "description": "Tìm kiếm Spotlight phong cách macOS Tahoe (Mở nhanh ứng dụng, máy tính, tác vụ hệ thống bằng Super + Alt + F)",
++  "description": "macOS Tahoe style Spotlight search (open apps, calculator and system actions with Super + Alt + F)",
+   "uuid": "UbuntuTahoeSpotlight@adfoxtheme.github.io",
+   "settings-schema": "org.gnome.shell.extensions.ubuntutahoespotlight",
+   "shell-version": [
+--- a/schemas/org.gnome.shell.extensions.ubuntutahoespotlight.gschema.xml
++++ b/schemas/org.gnome.shell.extensions.ubuntutahoespotlight.gschema.xml
+@@ -3,13 +3,13 @@
+   <schema id="org.gnome.shell.extensions.ubuntutahoespotlight" path="/org/gnome/shell/extensions/ubuntutahoespotlight/">
+     <key name="toggle-spotlight" type="as">
+       <default><![CDATA[['<Super><Alt>f']]]></default>
+-      <summary>Phím tắt mở Spotlight</summary>
+-      <description>Tổ hợp phím để bật tắt tìm kiếm Spotlight phong cách macOS Tahoe</description>
++      <summary>Shortcut to open Spotlight</summary>
++      <description>Key combination that toggles macOS Tahoe style Spotlight search</description>
+     </key>
+     <key name="max-results" type="i">
+       <default>8</default>
+-      <summary>Số lượng kết quả tối đa</summary>
+-      <description>Số kết quả tìm kiếm hiển thị đồng thời</description>
++      <summary>Maximum results</summary>
++      <description>Number of search results shown at once</description>
+     </key>
+   </schema>
+ </schemalist>
+--- a/stylesheet.css
++++ b/stylesheet.css
+@@ -2,10 +2,10 @@
+ 
+ .tahoe-spotlight-modal {
+     width: 660px !important;
+-    background-color: rgba(30, 31, 37, 0.80) !important;
+-    border: 1px solid rgba(255, 255, 255, 0.14) !important;
+-    border-radius: 18px !important;
+-    box-shadow: none !important;
++    background-color: rgba(36, 36, 36, 0.96) !important;
++    border: 1px solid rgba(255, 255, 255, 0.12) !important;
++    border-radius: 24px !important;
++    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45) !important;
+     padding: 0 !important;
+     margin: 0 !important;
+ }
+@@ -27,7 +27,7 @@
+ 
+ .tahoe-spotlight-search-icon {
+     icon-size: 22px;
+-    color: rgba(255, 255, 255, 0.45);
++    color: rgba(255, 255, 255, 0.65);
+ }
+ 
+ .tahoe-spotlight-entry {
+@@ -35,10 +35,10 @@
+     border: none !important;
+     box-shadow: none !important;
+     color: #ffffff !important;
+-    font-size: 19px !important;
+-    font-weight: 300 !important;
++    font-size: 14pt !important;
++    font-weight: 400 !important;
+     padding: 2px 0 !important;
+-    selection-background-color: rgba(255, 255, 255, 0.25) !important;
++    selection-background-color: st-darken(-st-accent-color, 13%) !important;
+     selected-color: #ffffff !important;
+ }
+ 
+@@ -48,9 +48,9 @@
+ }
+ 
+ .tahoe-spotlight-entry StLabel.hint-text {
+-    color: rgba(255, 255, 255, 0.35) !important;
+-    font-size: 19px !important;
+-    font-weight: 300 !important;
++    color: rgba(255, 255, 255, 0.65) !important;
++    font-size: 14pt !important;
++    font-weight: 400 !important;
+ }
+ 
+ .tahoe-spotlight-esc-badge {
+@@ -58,12 +58,12 @@
+     border: 1px solid rgba(255, 255, 255, 0.12);
+     border-radius: 6px;
+     padding: 3px 8px;
+-    font-size: 11px;
++    font-size: 9pt;
+     font-weight: 600;
+-    color: rgba(255, 255, 255, 0.45);
++    color: rgba(255, 255, 255, 0.65);
+ }
+ 
+-/* 2. Glass Separator */
++/* 2. Separator */
+ .tahoe-spotlight-separator {
+     height: 1px;
+     background-color: rgba(255, 255, 255, 0.08);
+@@ -87,7 +87,7 @@
+     background-color: transparent !important;
+     border: none !important;
+     box-shadow: none !important;
+-    transition-duration: 80ms;
++    transition-duration: 100ms;
+ }
+ 
+ .tahoe-spotlight-item:hover {
+@@ -97,22 +97,25 @@
+ }
+ 
+ .tahoe-spotlight-item.selected {
+-    background-color: rgba(255, 255, 255, 0.14) !important;
++    background-color: st-darken(-st-accent-color, 13%) !important;
+     border: none !important;
+     box-shadow: none !important;
+ }
+ 
++.tahoe-spotlight-item:focus {
++    box-shadow: inset 0 0 0 2px #ffffff !important;
++}
++
+ .tahoe-spotlight-item-box {
+     spacing: 12px;
+ }
+ 
+ .tahoe-spotlight-icon-bin {
+-    width: 38px;
+-    height: 38px;
++    width: 40px;
++    height: 40px;
+ }
+ 
+ .tahoe-spotlight-item-icon {
+-    icon-size: 30px;
+     color: #ffffff;
+ }
+ 
+@@ -121,14 +124,14 @@
+ }
+ 
+ .tahoe-spotlight-item-title {
+-    font-size: 14.5px;
++    font-size: 11pt;
+     font-weight: 500;
+     color: #ffffff;
+ }
+ 
+ .tahoe-spotlight-item-sub {
+-    font-size: 11.5px;
+-    color: rgba(255, 255, 255, 0.45);
++    font-size: 9pt;
++    color: rgba(255, 255, 255, 0.65);
+ }
+ 
+ .tahoe-spotlight-item.selected .tahoe-spotlight-item-title {
+@@ -137,17 +140,17 @@
+ }
+ 
+ .tahoe-spotlight-item.selected .tahoe-spotlight-item-sub {
+-    color: rgba(255, 255, 255, 0.75) !important;
++    color: rgba(255, 255, 255, 0.85) !important;
+ }
+ 
+ .tahoe-spotlight-item-badge {
+-    font-size: 10.5px;
++    font-size: 9pt;
+     font-weight: 600;
+     padding: 2px 7px;
+-    border-radius: 5px;
++    border-radius: 6px;
+     background-color: rgba(255, 255, 255, 0.08);
+-    border: 1px solid rgba(255, 255, 255, 0.10);
+-    color: rgba(255, 255, 255, 0.50);
++    border: 1px solid rgba(255, 255, 255, 0.12);
++    color: rgba(255, 255, 255, 0.65);
+ }
+ 
+ .tahoe-spotlight-item.selected .tahoe-spotlight-item-badge {
+@@ -164,31 +167,25 @@
+ 
+ .tahoe-spotlight-empty-icon {
+     icon-size: 32px;
+-    opacity: 0.35;
++    opacity: 0.65;
+     color: #ffffff;
+ }
+ 
+ .tahoe-spotlight-empty-label {
+-    font-size: 13.5px;
+-    color: rgba(255, 255, 255, 0.45);
++    font-size: 10pt;
++    color: rgba(255, 255, 255, 0.65);
+ }
+ 
+ /* 4. Footer Bar */
+ .tahoe-spotlight-footer {
+     padding: 7px 16px;
+     background-color: rgba(0, 0, 0, 0.14);
+-    border-top: 1px solid rgba(255, 255, 255, 0.06);
+-    border-radius: 0 0 18px 18px;
++    border-top: 1px solid rgba(255, 255, 255, 0.08);
++    border-radius: 0 0 24px 24px;
+     box-shadow: none !important;
+ }
+ 
+ .tahoe-spotlight-footer-hint {
+-    font-size: 11px;
+-    color: rgba(255, 255, 255, 0.35);
+-}
+-
+-.tahoe-spotlight-footer-brand {
+-    font-size: 11px;
+-    font-weight: 500;
+-    color: rgba(255, 255, 255, 0.25);
++    font-size: 9pt;
++    color: rgba(255, 255, 255, 0.65);
+ }
