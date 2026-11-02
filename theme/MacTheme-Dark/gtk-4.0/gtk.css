@@ -7993,56 +7993,50 @@ dialog-host > widget > widget > toolbarview > box > entry.search + toastoverlay 
 window.background.chromium headerbar.header-bar.titlebar button.titlebutton {
   min-width: 20px;
   min-height: 20px;
-  margin: 0 3px;
+  margin: 0 1px;
   padding: 0;
-  border-radius: 9999px;
-  background-image: none;
   border: none;
+  background-color: transparent;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: 20px 20px;
+  color: transparent;
 }
 
 window.background.chromium headerbar.header-bar.titlebar button.close.titlebutton {
-  background-color: #e9524a;
-  color: #e9524a;
+  background-image: -gtk-scaled(url("windows-assets/titlebutton-close-dark.png"), url("windows-assets/titlebutton-close-dark@2.png"));
 }
 
 window.background.chromium headerbar.header-bar.titlebar button.close.titlebutton:hover {
-  background-color: #e9524a;
-  color: mix(black,#e9524a,0.5);
+  background-image: -gtk-scaled(url("windows-assets/titlebutton-close-hover-dark.png"), url("windows-assets/titlebutton-close-hover-dark@2.png"));
 }
 
 window.background.chromium headerbar.header-bar.titlebar button.close.titlebutton:active {
-  background-color: #ba423b;
-  color: mix(black,#ba423b,0.5);
+  background-image: -gtk-scaled(url("windows-assets/titlebutton-close-active-dark.png"), url("windows-assets/titlebutton-close-active-dark@2.png"));
 }
 
 window.background.chromium headerbar.header-bar.titlebar button.minimize.titlebutton {
-  background-color: #f1ae1b;
-  color: #f1ae1b;
+  background-image: -gtk-scaled(url("windows-assets/titlebutton-minimize-dark.png"), url("windows-assets/titlebutton-minimize-dark@2.png"));
 }
 
 window.background.chromium headerbar.header-bar.titlebar button.minimize.titlebutton:hover {
-  background-color: #f1ae1b;
-  color: mix(black,#f1ae1b,0.5);
+  background-image: -gtk-scaled(url("windows-assets/titlebutton-minimize-hover-dark.png"), url("windows-assets/titlebutton-minimize-hover-dark@2.png"));
 }
 
 window.background.chromium headerbar.header-bar.titlebar button.minimize.titlebutton:active {
-  background-color: #c18b16;
-  color: mix(black,#c18b16,0.5);
+  background-image: -gtk-scaled(url("windows-assets/titlebutton-minimize-active-dark.png"), url("windows-assets/titlebutton-minimize-active-dark@2.png"));
 }
 
 window.background.chromium headerbar.header-bar.titlebar button.maximize.titlebutton {
-  background-color: #59c837;
-  color: #59c837;
+  background-image: -gtk-scaled(url("windows-assets/titlebutton-maximize-dark.png"), url("windows-assets/titlebutton-maximize-dark@2.png"));
 }
 
 window.background.chromium headerbar.header-bar.titlebar button.maximize.titlebutton:hover {
-  background-color: #59c837;
-  color: mix(black,#59c837,0.5);
+  background-image: -gtk-scaled(url("windows-assets/titlebutton-maximize-hover-dark.png"), url("windows-assets/titlebutton-maximize-hover-dark@2.png"));
 }
 
 window.background.chromium headerbar.header-bar.titlebar button.maximize.titlebutton:active {
-  background-color: #47a02c;
-  color: mix(black,#47a02c,0.5);
+  background-image: -gtk-scaled(url("windows-assets/titlebutton-maximize-active-dark.png"), url("windows-assets/titlebutton-maximize-active-dark@2.png"));
 }
 
 window.background.chromium {
