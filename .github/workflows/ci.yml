@@ -1,16 +1,26 @@
-# Builds the 20px Qt title-bar plugin for each distro's Qt, then publishes the
+# Lints the scripts and builds the 20px Qt title-bar plugin for each distro's Qt
+# and KDE Flatpak runtime. When every check passes, a pull request from this
+# repo merges itself into main (drafts don't), and a v* tag publishes the
 # release archive that bootstrap.sh downloads. Run it by hand to test the builds.
-name: Release
+name: CI
 
 on:
+  pull_request:
   push:
     tags: ['v*']
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
+  lint:
+    name: Lint scripts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: shellcheck -S warning $(git ls-files '*.sh')
+
   qt-plugin:
     name: Qt plugin (${{ matrix.image }})
     runs-on: ubuntu-latest
@@ -67,10 +77,29 @@ jobs:
           name: qt-plugin-flatpak-${{ matrix.sdk }}
           path: qt/wayland-decoration-client
 
+  merge:
+    name: Merge into main
+    needs: [lint, qt-plugin, qt-plugin-flatpak]
+    # Forks get a read-only token, and drafts are how to hold a PR back.
+    if: >-
+      github.event_name == 'pull_request' && !github.event.pull_request.draft
+      && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - run: gh pr merge "$PR" --rebase -R "$GITHUB_REPOSITORY"
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+
   release:
-    needs: [qt-plugin, qt-plugin-flatpak]
+    needs: [lint, qt-plugin, qt-plugin-flatpak]
     if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
