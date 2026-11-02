@@ -56,7 +56,8 @@ if [ "$MODE" = --compare ]; then
     done
 fi
 
-"$ROOT/uninstall.sh" </dev/null
+[ "$(cat "$HOME/.local/state/tahoe-gnome/version")" = "$(cat "$ROOT/VERSION")" ] || fail 'version not recorded'
+"$HOME/.local/state/tahoe-gnome/uninstall.sh" </dev/null
 
 want /org/gnome/desktop/interface/gtk-theme "'Adwaita'"
 want /org/gnome/shell/favorite-apps "['mine.desktop']"

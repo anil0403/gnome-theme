@@ -84,6 +84,9 @@ if [ ! -e "$STATE/backup-done" ]; then
     touch "$STATE/backup-done"
 fi
 
+# Kept here because the one-command install runs from a temp folder.
+cp "$ROOT/uninstall.sh" "$STATE/uninstall.sh"
+
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 
@@ -178,4 +181,5 @@ done
     warn 'the User Themes extension is missing: install your distro gnome-shell-extensions package'
 "$qt" || warn 'qt6ct or Kvantum is missing, so Qt apps were left unthemed'
 
-echo 'Done. Log out and back in to load the extensions.'
+cp "$ROOT/VERSION" "$STATE/version"
+echo "Done: Tahoe GNOME $(cat "$ROOT/VERSION"). Log out and back in to load the extensions."

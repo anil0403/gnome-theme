@@ -29,14 +29,14 @@ You need `git`, `patch`, `python3` and the User Themes extension, which comes in
 your distro's `gnome-shell-extensions` package.
 
 ```bash
-git clone https://github.com/anil0403/tahoe-gnome.git
-cd tahoe-gnome
-./install.sh
+curl -fsSL https://raw.githubusercontent.com/anil0403/tahoe-gnome/main/bootstrap.sh | bash
 ```
 
 Log out and back in when it finishes. The script works per user and never needs
-root. It downloads the extensions and icons from their original projects, at
-pinned commits. See [THIRD_PARTY.md](THIRD_PARTY.md).
+root. It installs the latest release, and downloads the extensions and icons from
+their original projects at pinned commits. See [THIRD_PARTY.md](THIRD_PARTY.md).
+
+Prefer to read it first? Clone the repo and run `./install.sh`.
 
 It disables the Dash to Dock, Ubuntu Dock, Blur My Shell, Just Perfection, Global
 Menu and Kimpanel extensions, because they conflict with this theme. Your
@@ -49,10 +49,17 @@ sharing them here. Get them from [Apple](https://developer.apple.com/fonts/),
 where its terms allow your use, and install them before running `install.sh`.
 Without them, your current fonts are kept.
 
+## Update
+
+Run the install command again. It replaces the theme with the latest release and
+keeps your original backup. Your installed version is in
+`~/.local/state/tahoe-gnome/version`, and [VERSIONING.md](VERSIONING.md) explains
+what each release number means.
+
 ## Uninstall
 
 ```bash
-./uninstall.sh
+~/.local/state/tahoe-gnome/uninstall.sh
 ```
 
 This removes what was installed and restores the files and settings it replaced.
