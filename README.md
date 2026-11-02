@@ -1,30 +1,54 @@
+<div align="center">
+
 # GNOME Theme
 
-A dark, macOS-style desktop theme for GNOME: colours, window controls,
-icons, cursors, dock, menu bar and behaviour. It only themes your desktop and
-installs no apps.
+**A dark, macOS-style look for GNOME.**<br>
+Colours, window controls, icons, cursors, dock, menu bar and behaviour. No apps installed.
 
-Tested on Arch Linux with GNOME Shell 51 on Wayland. The extensions declare
-support for GNOME 45 to 51, but the shell styling targets 51, so older versions
-may look different.
+[![Release](https://img.shields.io/github/v/release/anil0403/gnome-theme?color=0a84ff&label=release)](https://github.com/anil0403/gnome-theme/releases/latest)
+![GNOME 51](https://img.shields.io/badge/GNOME-51-4a86cf?logo=gnome&logoColor=white)
+![Wayland](https://img.shields.io/badge/Wayland-ready-ff9f0a?logo=wayland&logoColor=white)
+![Arch Linux](https://img.shields.io/badge/tested_on-Arch_Linux-1793d1?logo=archlinux&logoColor=white)
+[![License: MIT](https://img.shields.io/badge/license-MIT-30d158)](LICENSE)
 
-## What you get
+![The desktop with Files and Settings open](docs/screenshots/desktop.webp)
 
-- `MacTheme-Dark` for GTK 3, GTK 4 and libadwaita, GNOME Shell and window frames
-- `MacTheme-blue-dark` icons, `MacTheme-cursors` cursors and blue accents
-- SF Pro for the interface and SF Mono for code, downloaded from Apple
-- Larger 20px traffic-light buttons on the left of the title bar
-- A bottom dock with hidden trash, where clicking a focused app minimizes it
-- A global menu bar, Activities hidden, and a `3:45 PM  2 Nov Mon` style clock
-- Blurred Overview and app folders
-- Spotlight search on `Super+Alt+F`
-- Clipboard history on `Super+Alt+Space`
-- Screenshot UI on `Print` or `Shift+Super+S`
-- `Alt` + drag to move windows, `Alt` + right-drag to resize, and middle-click a
-  title bar to lower the window
-- A dark Arch Linux wallpaper on the desktop and lock screen
-- Matching Qt apps through `qt6ct` and Kvantum, with the same 20px title-bar
-  buttons
+</div>
+
+## Features
+
+| | |
+|---|---|
+| 🎨 **Look** | `MacTheme-Dark` for GTK 3, GTK 4, libadwaita and GNOME Shell, with blue accents, MacTheme icons and cursors, and SF Pro fonts |
+| 🚦 **Traffic lights** | Larger 20px buttons on the left of the title bar, in GTK, Qt and Flatpak apps |
+| ⚓ **Dock** | A bottom dock with hidden trash. Click a focused app to minimize it |
+| 🍎 **Menu bar** | A global menu, Activities hidden, and a `3:45 PM  2 Nov Mon` clock |
+| 🔍 **Spotlight** | Search apps and settings from anywhere |
+| 📋 **Clipboard** | A clipboard history you can paste from |
+| 🌌 **Blur** | Blurred Overview and app folders |
+| 🖼️ **Wallpaper** | A dark Arch Linux wallpaper on the desktop and lock screen |
+
+<table>
+  <tr>
+    <td><img src="docs/screenshots/apps.webp" alt="The app grid"></td>
+    <td><img src="docs/screenshots/spotlight.webp" alt="Spotlight search"></td>
+  </tr>
+  <tr>
+    <td align="center">App grid</td>
+    <td align="center">Spotlight search</td>
+  </tr>
+</table>
+
+### Shortcuts
+
+| Keys | Action |
+|---|---|
+| `Super` `Alt` `F` | Spotlight |
+| `Super` `Alt` `Space` | Clipboard history |
+| `Print` or `Shift` `Super` `S` | Screenshot |
+| `Alt` + drag | Move a window |
+| `Alt` + right-drag | Resize a window |
+| Middle-click a title bar | Send the window to the back |
 
 ## Install
 
@@ -35,50 +59,38 @@ your distro's `gnome-shell-extensions` package.
 curl -fsSL https://raw.githubusercontent.com/anil0403/gnome-theme/main/bootstrap.sh | bash
 ```
 
-Log out and back in when it finishes. The script works per user. It installs the
-latest release, and downloads the extensions and icons from their original
-projects at pinned commits. See [THIRD_PARTY.md](THIRD_PARTY.md).
+Then log out and back in. Prefer to read it first? Clone the repo and run
+`./install.sh`.
 
-Prefer to read it first? Clone the repo and run `./install.sh`.
+<details>
+<summary>What the installer changes</summary>
 
-It disables the Dash to Dock, Ubuntu Dock, Blur My Shell, Just Perfection, Global
-Menu and Kimpanel extensions, because they conflict with this theme. It sets the
-wallpaper, and leaves your favourites alone.
+- It works per user and installs the latest release. The extensions and icons
+  come from their original projects at pinned commits. See
+  [THIRD_PARTY.md](THIRD_PARTY.md).
+- It sets the wallpaper and leaves your favourites alone.
+- It disables Dash to Dock, Ubuntu Dock, Blur My Shell, Just Perfection, Global
+  Menu and Kimpanel, because they conflict with this theme.
+- **Qt apps:** if `qt6ct` or Kvantum is missing, it installs them with pacman,
+  apt or dnf, which asks for your password. This is the only step that needs
+  root. The Qt title-bar buttons come from a prebuilt plugin for the current Qt
+  on Arch, Fedora, Debian and Ubuntu. On other Qt versions, Qt apps keep their
+  own title bars.
+- **Flatpak apps:** it gives every Flatpak app read-only access to the theme, and
+  gives Qt apps on the KDE 6.10 and 6.11 runtimes the title-bar plugin. Run the
+  installer again after installing a new Qt Flatpak app.
+- **Fonts:** Apple's license doesn't allow sharing SF Pro and SF Mono, so if you
+  don't have them, it downloads them from [Apple](https://developer.apple.com/fonts/)
+  (about 220 MB, needs `7z` and `cpio`). If that fails, your current fonts are
+  kept.
 
-### Qt apps
-
-If `qt6ct` or Kvantum is missing, the installer installs them with your package
-manager (pacman, apt or dnf), which asks for your password. This is the only step
-that needs root. If it fails, Qt apps keep their own look.
-
-The 20px title-bar buttons for Qt apps come from a prebuilt plugin. Each release
-includes builds for the current Qt on Arch, Fedora, Debian and Ubuntu, and the
-installer picks the one matching your Qt. On other Qt versions, Qt apps keep
-their own title bars.
-
-### Flatpak apps
-
-Flatpak apps can't see the theme by default. The installer gives every Flatpak
-app read-only access to `~/.themes`, `~/.config/gtk-3.0` and `~/.config/gtk-4.0`,
-so GTK and libadwaita apps get the theme and title-bar buttons. Qt apps on the
-KDE runtime get the title-bar plugin built for that runtime's Qt (KDE 6.10 and
-6.11). Run the installer again after installing a new Qt Flatpak app.
-
-### Fonts
-
-The theme uses SF Pro and SF Mono. Apple's license doesn't allow sharing them
-here, so if you don't already have them, the installer downloads them from
-[Apple](https://developer.apple.com/fonts/) (about 220 MB) into
-`~/.local/share/fonts/gnome-theme`. This needs `7z` and `cpio`, and the fonts are
-covered by Apple's license, not this repo's. If the download fails, your current
-fonts are kept.
+</details>
 
 ## Update
 
-Run the install command again. It replaces the theme with the latest release and
-keeps your original backup. Your installed version is in
+Run the install command again. Your installed version is in
 `~/.local/state/gnome-theme/version`, and [VERSIONING.md](VERSIONING.md) explains
-what each release number means.
+the release numbers.
 
 ## Uninstall
 
@@ -87,21 +99,11 @@ what each release number means.
 ```
 
 This removes what was installed and restores the files and settings it replaced.
-Other settings you changed since then are kept.
-
-## Test
-
-```bash
-tests/sandbox.sh
-```
-
-This runs a full install and uninstall in a throwaway home directory on a private
-session bus. Your desktop isn't touched.
 
 ## Not included
 
-- Apps and app configs, including terminal, editor and browser themes
-- The GDM login screen theme
+Apps and app configs (terminal, editor and browser themes) and the GDM login
+screen.
 
 ## License
 
