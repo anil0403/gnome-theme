@@ -4,6 +4,8 @@
 # each build only loads on that Qt version. The release workflow runs this on
 # several distros, and the tests need a local build. Needs cmake, a C++ compiler
 # and the Qt 6 base, svg and wayland development files, including private headers.
+# For Flatpak apps, run it in the KDE SDK their runtime matches:
+#   flatpak run --share=network --filesystem="$PWD" --command=bash org.kde.Sdk//6.11 qt/build-decoration.sh
 set -euo pipefail
 
 ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
@@ -24,7 +26,10 @@ sed -i -f "$ROOT/patches/QWhiteSurGtkDecorations.sed" "$tmp/src/src/qwhitesurgtk
 cmake -S "$tmp/src" -B "$tmp/build" -DUSE_QT6=true -DCMAKE_BUILD_TYPE=Release >/dev/null
 cmake --build "$tmp/build" -j"$(nproc)" >/dev/null
 
-dest=$OUT/${version%.*}-$(uname -m)
+# Run inside a KDE Flatpak SDK, it builds for apps on that runtime instead.
+prefix=
+if [ -e /.flatpak-info ]; then prefix=flatpak-; fi
+dest=$OUT/$prefix${version%.*}-$(uname -m)
 mkdir -p "$dest"
 cp "$(find "$tmp/build" -name libqwhitesurgtkdecorations.so)" "$dest/"
 strip "$dest/libqwhitesurgtkdecorations.so"
