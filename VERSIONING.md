@@ -39,9 +39,9 @@ won't apply.
    ```
 
 The tag starts the [Release workflow](.github/workflows/release.yml). It builds
-the Qt plugin on Arch, Fedora, Debian and Ubuntu, adds every build to the archive,
-and publishes the release. To try the builds without releasing, run the workflow
-by hand from the Actions tab.
+the Qt plugin on Arch, Fedora, Debian, Ubuntu and the KDE Flatpak runtimes, adds
+every build to the archive, and publishes the release. To try the builds without
+releasing, run the workflow by hand from the Actions tab.
 
 The asset must be named `gnome-theme.tar.gz`, because `bootstrap.sh` downloads it
 from the latest release. Publishing a release therefore updates what the
