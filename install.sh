@@ -80,13 +80,12 @@ if has_qt_tools; then qt=true; fi
 GTK4_LINKS=(gtk.css gtk-dark.css assets windows-assets)
 WALLPAPER=$DATA/backgrounds/gnome-theme.png
 QT_PLUGINS=$DATA/gnome-theme-qt6
-paths=("$HOME/.themes/MacTahoe-Dark")
+paths=("$HOME/.themes/MacTheme-Dark")
 for f in "${GTK4_LINKS[@]}"; do paths+=("$CONFIG/gtk-4.0/$f"); done
 for name in "${EXTENSIONS[@]}"; do paths+=("$EXT_DIR/$name@adfoxtheme.github.io"); done
-for icon in MacTahoe MacTahoe-light MacTahoe-dark MacTahoe-blue MacTahoe-blue-light \
-    MacTahoe-blue-dark MacTahoe-cursors MacTahoe-dark-cursors; do
-    paths+=("$DATA/icons/$icon")
-done
+ICON_DIRS=(MacTheme MacTheme-light MacTheme-dark MacTheme-blue MacTheme-blue-light
+    MacTheme-blue-dark MacTheme-cursors MacTheme-dark-cursors)
+for icon in "${ICON_DIRS[@]}"; do paths+=("$DATA/icons/$icon"); done
 paths+=("$FONT_DIR" "$WALLPAPER")
 if "$qt"; then
     paths+=("$CONFIG/Kvantum/TahoeGlassDark" "$CONFIG/Kvantum/kvantum.kvconfig"
@@ -149,16 +148,26 @@ sed -i -f "$ROOT/patches/UbuntuTahoe-stylesheet.sed" \
 echo 'Fetching icons and cursors...'
 fetch "$ICONS_REPO" "$ICONS_SHA" "$tmp/icons"
 mkdir -p "$DATA/icons"
-(cd "$tmp/icons" && ./install.sh -d "$DATA/icons" -t blue >/dev/null)
-for pair in dist:MacTahoe-cursors dist-dark:MacTahoe-dark-cursors; do
+(cd "$tmp/icons" && ./install.sh -d "$DATA/icons" -n MacTheme -t blue >/dev/null)
+for pair in dist:MacTheme-cursors dist-dark:MacTheme-dark-cursors; do
     rm -rf "${DATA:?}/icons/${pair#*:}"
     cp -a "$tmp/icons/cursors/${pair%:*}" "$DATA/icons/${pair#*:}"
 done
+# Upstream only renames its own MacTahoe template, so name each theme after its folder.
+for icon in "${ICON_DIRS[@]}"; do
+    f=$DATA/icons/$icon/index.theme
+    [ -e "$f" ] || continue
+    sed -i -e "s/^Name=.*/Name=$icon/" -e 's/MacTahoe/MacTheme/g' "$f"
+done
 
 echo 'Installing the theme...'
+# Earlier releases installed these as MacTahoe. Only remove the ones we installed.
+for old in "$HOME/.themes/MacTahoe-Dark" "$DATA"/icons/MacTahoe*; do
+    if grep -qxF "$old" "$STATE/paths"; then rm -rf "$old"; fi
+done
 mkdir -p "$HOME/.themes" "$EXT_DIR" "$CONFIG/gtk-4.0"
-rm -rf "$HOME/.themes/MacTahoe-Dark"
-cp -a "$ROOT/theme/MacTahoe-Dark" "$HOME/.themes/"
+rm -rf "$HOME/.themes/MacTheme-Dark"
+cp -a "$ROOT/theme/MacTheme-Dark" "$HOME/.themes/"
 # v1.0.x copied override files into ~/.config; put back what they replaced.
 if [[ $(cat "$STATE/version" 2>/dev/null) == 1.0.* ]]; then
     for f in gtk-3.0/gtk.css gtk-3.0/colors.css gtk-3.0/settings.ini \
@@ -171,7 +180,7 @@ fi
 # so point that at the theme rather than keeping a second copy.
 for f in "${GTK4_LINKS[@]}"; do
     rm -rf "${CONFIG:?}/gtk-4.0/$f"
-    ln -s "$HOME/.themes/MacTahoe-Dark/gtk-4.0/$f" "$CONFIG/gtk-4.0/$f"
+    ln -s "$HOME/.themes/MacTheme-Dark/gtk-4.0/$f" "$CONFIG/gtk-4.0/$f"
 done
 for name in "${EXTENSIONS[@]}"; do
     rm -rf "$EXT_DIR/$name@adfoxtheme.github.io"
