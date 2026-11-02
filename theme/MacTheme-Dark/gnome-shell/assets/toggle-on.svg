@@ -4,7 +4,7 @@
    <feGaussianBlur stdDeviation="0.6084"/>
   </filter>
  </defs>
- <rect width="40" height="18" rx="9" ry="9" fill="#1C71D8"/>
+ <rect width="40" height="18" rx="9" ry="9" fill="#1C93D8"/>
  <rect y="-.038" width="40" height="24" opacity="0" stroke-width=".87706"/>
  <rect x="16" y="3" width="22" height="14" rx="7" ry="7" fill="#000000" filter="url(#filter4)" opacity=".15"/>
  <rect x="16" y="2" width="22" height="14" rx="7" ry="7" fill="#ffffff"/>

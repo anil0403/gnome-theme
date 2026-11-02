@@ -374,7 +374,7 @@
 +.tahoe-clip-delete-btn:focus,
 +.tahoe-clip-clear-btn:focus {
 +    opacity: 1.0;
-+    box-shadow: inset 0 0 0 2px -st-accent-color;
++    box-shadow: inset 0 0 0 2px #35a4e4;
  }
  
  /* Scrollable List Section */
