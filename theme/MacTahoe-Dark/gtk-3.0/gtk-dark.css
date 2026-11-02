@@ -2212,8 +2212,8 @@ headerbar.default-decoration {
 
 headerbar.default-decoration button.titlebutton {
   border: none;
-  min-width: 16px;
-  min-height: 16px;
+  min-width: 20px;
+  min-height: 20px;
   margin: 0 1px;
   padding: 0;
 }
@@ -4962,14 +4962,15 @@ headerbar > box.right {
   padding: 0 10px;
 }
 
-headerbar button.titlebutton.close, headerbar button.titlebutton.maximize, headerbar button.titlebutton.minimize {
-  min-width: 16px;
-  min-height: 16px;
+headerbar button.titlebutton.close, headerbar button.titlebutton.maximize, headerbar button.titlebutton.minimize,
+.titlebar button.titlebutton.close, .titlebar button.titlebutton.maximize, .titlebar button.titlebutton.minimize {
+  min-width: 20px;
+  min-height: 20px;
   margin: 0 1px;
   padding: 0;
   background-position: center;
   background-repeat: no-repeat;
-  background-size: 16px 16px;
+  background-size: 20px 20px;
 }
 
 headerbar button.titlebutton.close, headerbar button.titlebutton.close:hover, headerbar button.titlebutton.close:focus, headerbar button.titlebutton.close:active, headerbar button.titlebutton.close:backdrop, headerbar button.titlebutton.maximize, headerbar button.titlebutton.maximize:hover, headerbar button.titlebutton.maximize:focus, headerbar button.titlebutton.maximize:active, headerbar button.titlebutton.maximize:backdrop, headerbar button.titlebutton.minimize, headerbar button.titlebutton.minimize:hover, headerbar button.titlebutton.minimize:focus, headerbar button.titlebutton.minimize:active, headerbar button.titlebutton.minimize:backdrop {
@@ -8035,11 +8036,11 @@ window.background.chromium headerbar.titlebar button.toggle:checked, window.back
 }
 
 window.background.chromium headerbar.titlebar button.titlebutton {
-  min-width: 18px;
-  min-height: 16px;
+  min-width: 22px;
+  min-height: 20px;
   margin: 0;
   padding: 0;
-  background-size: 16px 16px;
+  background-size: 20px 20px;
   color: transparent;
   border: none;
 }

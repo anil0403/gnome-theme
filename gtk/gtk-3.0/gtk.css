@@ -1,8 +1,1 @@
 @import 'colors.css';
-/* larger traffic light window buttons */
-headerbar button.titlebutton.close, headerbar button.titlebutton.maximize, headerbar button.titlebutton.minimize,
-.titlebar button.titlebutton.close, .titlebar button.titlebutton.maximize, .titlebar button.titlebutton.minimize {
-  min-width: 20px;
-  min-height: 20px;
-  background-size: 20px 20px;
-}
