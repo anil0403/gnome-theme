@@ -4797,19 +4797,19 @@ list.content:not(.conversation-listbox) > row {
 
 list.boxed-list-separate > row:first-child, listview.content:not(.conversation-listbox) > row:first-child,
 list.content:not(.conversation-listbox) > row:first-child {
-  border-top-left-radius: 13px;
-  border-top-right-radius: 13px;
+  border-top-left-radius: 11px;
+  border-top-right-radius: 11px;
 }
 
 list.boxed-list-separate > row:last-child, listview.content:not(.conversation-listbox) > row:last-child,
 list.content:not(.conversation-listbox) > row:last-child {
-  border-bottom-left-radius: 13px;
-  border-bottom-right-radius: 13px;
+  border-bottom-left-radius: 11px;
+  border-bottom-right-radius: 11px;
 }
 
 list.boxed-list-separate > row:only-child, listview.content:not(.conversation-listbox) > row:only-child,
 list.content:not(.conversation-listbox) > row:only-child {
-  border-radius: 13px;
+  border-radius: 11px;
 }
 
 list.boxed-list-separate > row + row, listview.content:not(.conversation-listbox) > row + row,
