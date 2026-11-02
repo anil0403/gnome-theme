@@ -56,6 +56,14 @@ includes builds for the current Qt on Arch, Fedora, Debian and Ubuntu, and the
 installer picks the one matching your Qt. On other Qt versions, Qt apps keep
 their own title bars.
 
+### Flatpak apps
+
+Flatpak apps can't see the theme by default. The installer gives every Flatpak
+app read-only access to `~/.themes`, `~/.config/gtk-3.0` and `~/.config/gtk-4.0`,
+so GTK and libadwaita apps get the theme and title-bar buttons. Qt apps on the
+KDE runtime get the title-bar plugin built for that runtime's Qt (KDE 6.10 and
+6.11). Run the installer again after installing a new Qt Flatpak app.
+
 ### Fonts
 
 The theme uses SF Pro and SF Mono. Apple's license doesn't allow sharing them

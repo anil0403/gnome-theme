@@ -46,8 +46,29 @@ jobs:
           name: qt-plugin-${{ strategy.job-index }}
           path: qt/wayland-decoration-client
 
+  qt-plugin-flatpak:
+    name: Qt plugin (KDE Flatpak ${{ matrix.sdk }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        sdk: ['6.10', '6.11']
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build in the KDE SDK
+        run: |
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+          sudo apt-get update && sudo apt-get install -y flatpak
+          flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+          flatpak install --user -y --noninteractive flathub org.kde.Sdk//${{ matrix.sdk }}
+          flatpak run --share=network --filesystem="$PWD" --command=bash org.kde.Sdk//${{ matrix.sdk }} qt/build-decoration.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: qt-plugin-flatpak-${{ matrix.sdk }}
+          path: qt/wayland-decoration-client
+
   release:
-    needs: qt-plugin
+    needs: [qt-plugin, qt-plugin-flatpak]
     if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
     steps:
