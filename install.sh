@@ -5,7 +5,7 @@ set -euo pipefail
 ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 CONFIG=${XDG_CONFIG_HOME:-$HOME/.config}
 DATA=${XDG_DATA_HOME:-$HOME/.local/share}
-STATE=${XDG_STATE_HOME:-$HOME/.local/state}/tahoe-gnome
+STATE=${XDG_STATE_HOME:-$HOME/.local/state}/gnome-theme
 EXT_DIR=$DATA/gnome-shell/extensions
 
 # Pinned so the patches always apply. Bump a pin only after regenerating them.
@@ -15,7 +15,7 @@ ICONS_REPO=https://github.com/vinceliuice/MacTahoe-icon-theme
 ICONS_SHA=839848b9a8a38a92a6936e30c4abe35cc6f2546d
 # Apple's own downloads: the fonts can't be redistributed, so each user fetches them.
 APPLE_FONTS=https://devimages-cdn.apple.com/design/resources/download
-FONT_DIR=$DATA/fonts/tahoe-gnome
+FONT_DIR=$DATA/fonts/gnome-theme
 
 TESTED_SHELL=51
 EXTENSIONS=(UbuntuTahoe UbuntuTahoeDock UbuntuTahoeClipboard UbuntuTahoeSpotlight)
@@ -52,6 +52,9 @@ get_font() { # SF-Pro or SF-Mono: dmg > pkg > gzipped cpio payload > otf files
 }
 
 [ "$(id -u)" -ne 0 ] || die 'run this as your normal user, not root'
+# Releases before 1.1.0 kept their backup under the old project name.
+old_state=$(dirname "$STATE")/tahoe-gnome
+if [ -d "$old_state" ] && [ ! -e "$STATE" ]; then mv "$old_state" "$STATE"; fi
 for cmd in dconf gsettings git glib-compile-schemas gnome-shell patch python3; do
     command -v "$cmd" >/dev/null || die "missing required command: $cmd"
 done
@@ -75,8 +78,8 @@ qt=false
 if has_qt_tools; then qt=true; fi
 
 GTK4_LINKS=(gtk.css gtk-dark.css assets windows-assets)
-WALLPAPER=$DATA/backgrounds/tahoe-gnome.png
-QT_PLUGINS=$DATA/tahoe-gnome-qt6
+WALLPAPER=$DATA/backgrounds/gnome-theme.png
+QT_PLUGINS=$DATA/gnome-theme-qt6
 paths=("$HOME/.themes/MacTahoe-Dark")
 for f in "${GTK4_LINKS[@]}"; do paths+=("$CONFIG/gtk-4.0/$f"); done
 for name in "${EXTENSIONS[@]}"; do paths+=("$EXT_DIR/$name@adfoxtheme.github.io"); done
@@ -213,7 +216,7 @@ fi
 echo 'Applying settings...'
 dconf load / < "$ROOT/dconf/settings.ini"
 mkdir -p "$DATA/backgrounds"
-cp "$ROOT/wallpaper/tahoe-gnome.png" "$WALLPAPER"
+cp "$ROOT/wallpaper/gnome-theme.png" "$WALLPAPER"
 uri=$(python3 -c 'import pathlib, sys; print(pathlib.Path(sys.argv[1]).as_uri())' "$WALLPAPER")
 for key in background/picture-uri background/picture-uri-dark screensaver/picture-uri; do
     dconf write "/org/gnome/desktop/$key" "'$uri'"

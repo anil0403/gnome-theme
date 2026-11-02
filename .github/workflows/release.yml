@@ -61,8 +61,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          git archive --prefix=tahoe-gnome/ -o tahoe-gnome.tar HEAD
-          tar --transform 's,^,tahoe-gnome/,' -rf tahoe-gnome.tar qt/wayland-decoration-client
-          gzip tahoe-gnome.tar
-          tar -tzf tahoe-gnome.tar.gz | grep libqwhitesurgtkdecorations.so
-          gh release create "$GITHUB_REF_NAME" tahoe-gnome.tar.gz --title "$GITHUB_REF_NAME" --generate-notes
+          git archive --prefix=gnome-theme/ -o gnome-theme.tar HEAD
+          tar --transform 's,^,gnome-theme/,' -rf gnome-theme.tar qt/wayland-decoration-client
+          gzip gnome-theme.tar
+          tar -tzf gnome-theme.tar.gz | grep libqwhitesurgtkdecorations.so
+          gh release create "$GITHUB_REF_NAME" gnome-theme.tar.gz --title "$GITHUB_REF_NAME" --generate-notes

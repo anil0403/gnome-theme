@@ -34,8 +34,10 @@ dconf write /org/gnome/shell/favorite-apps "['mine.desktop']"
 dconf write /org/gnome/desktop/background/picture-uri "'file:///mine.png'"
 
 "$ROOT/install.sh" </dev/null
-# Fake a v1.0.x install, which backed up and replaced the gtk3 user css.
+# Fake a v1.0.x install, which kept its state under the old name and backed up
+# and replaced the gtk3 user css.
 STATE=$HOME/.local/state/tahoe-gnome
+mv "$HOME/.local/state/gnome-theme" "$STATE"
 mkdir -p "$STATE/backup$HOME/.config/gtk-3.0"
 cp "$HOME/.config/gtk-3.0/gtk.css" "$STATE/backup$HOME/.config/gtk-3.0/"
 echo "@import 'colors.css';" > "$HOME/.config/gtk-3.0/gtk.css"
@@ -43,18 +45,19 @@ touch "$HOME/.config/gtk-3.0/colors.css"
 echo 1.0.1 > "$STATE/version"
 "$ROOT/install.sh" </dev/null >/dev/null   # a re-run must not overwrite the backup
 [ ! -e "$HOME/.config/gtk-3.0/colors.css" ] || fail 'v1.0 override left behind'
+[ ! -e "$STATE" ] && [ -e "$HOME/.local/state/gnome-theme/backup-done" ] || fail 'old state not moved'
 
 want /org/gnome/desktop/interface/gtk-theme "'MacTahoe-Dark'"
 want /org/gnome/shell/extensions/user-theme/name "'MacTahoe-Dark'"
 want /org/gnome/shell/favorite-apps "['mine.desktop']"
 want /org/gnome/desktop/interface/monospace-font-name "'SF Mono 11'"
-want /org/gnome/desktop/background/picture-uri "'file://$HOME/.local/share/backgrounds/tahoe-gnome.png'"
-cmp -s "$ROOT/wallpaper/tahoe-gnome.png" "$HOME/.local/share/backgrounds/tahoe-gnome.png" ||
+want /org/gnome/desktop/background/picture-uri "'file://$HOME/.local/share/backgrounds/gnome-theme.png'"
+cmp -s "$ROOT/wallpaper/gnome-theme.png" "$HOME/.local/share/backgrounds/gnome-theme.png" ||
     fail 'wallpaper not installed'
 if command -v qt6ct >/dev/null; then
-    grep -q "^QT_PLUGIN_PATH=$HOME/.local/share/tahoe-gnome-qt6" "$HOME/.config/environment.d/tahoe-qt.conf" ||
+    grep -q "^QT_PLUGIN_PATH=$HOME/.local/share/gnome-theme-qt6" "$HOME/.config/environment.d/tahoe-qt.conf" ||
         fail 'prebuilt Qt title-bar plugin not used (rerun qt/build-decoration.sh?)'
-    [ -e "$HOME/.local/share/tahoe-gnome-qt6/wayland-decoration-client/libqwhitesurgtkdecorations.so" ] ||
+    [ -e "$HOME/.local/share/gnome-theme-qt6/wayland-decoration-client/libqwhitesurgtkdecorations.so" ] ||
         fail 'Qt title-bar plugin missing'
 fi
 enabled=$(dconf read /org/gnome/shell/enabled-extensions)
@@ -81,19 +84,19 @@ if [ "$MODE" = --compare ]; then
     done
 fi
 
-[ "$(cat "$HOME/.local/state/tahoe-gnome/version")" = "$(cat "$ROOT/VERSION")" ] || fail 'version not recorded'
-"$HOME/.local/state/tahoe-gnome/uninstall.sh" </dev/null
+[ "$(cat "$HOME/.local/state/gnome-theme/version")" = "$(cat "$ROOT/VERSION")" ] || fail 'version not recorded'
+"$HOME/.local/state/gnome-theme/uninstall.sh" </dev/null
 
 want /org/gnome/desktop/interface/gtk-theme "'Adwaita'"
 want /org/gnome/shell/favorite-apps "['mine.desktop']"
 want /org/gnome/desktop/background/picture-uri "'file:///mine.png'"
-[ ! -e "$HOME/.local/share/backgrounds/tahoe-gnome.png" ] || fail 'wallpaper not removed'
+[ ! -e "$HOME/.local/share/backgrounds/gnome-theme.png" ] || fail 'wallpaper not removed'
 want /org/gnome/shell/enabled-extensions "['keep-me@example.com', 'dash-to-dock@micxgx.gmail.com']"
 [ "$(cat "$HOME/.config/gtk-3.0/gtk.css")" = '/* mine */' ] || fail 'gtk.css not restored'
 [ ! -e "$HOME/.themes/MacTahoe-Dark" ] || fail 'theme not removed'
 [ ! -e "$HOME/.local/share/icons/MacTahoe-blue-dark" ] || fail 'icons not removed'
-[ ! -e "$HOME/.local/share/fonts/tahoe-gnome" ] || fail 'fonts not removed'
-[ ! -e "$HOME/.local/share/tahoe-gnome-qt6" ] || fail 'Qt plugin not removed'
+[ ! -e "$HOME/.local/share/fonts/gnome-theme" ] || fail 'fonts not removed'
+[ ! -e "$HOME/.local/share/gnome-theme-qt6" ] || fail 'Qt plugin not removed'
 [ ! -e "$HOME/.config/environment.d/tahoe-qt.conf" ] || fail 'Qt environment not removed'
 CHECK
 echo 'PASS'

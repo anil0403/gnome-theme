@@ -32,7 +32,7 @@ You need `git`, `patch`, `python3` and the User Themes extension, which comes in
 your distro's `gnome-shell-extensions` package.
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/anil0403/tahoe-gnome/main/bootstrap.sh | bash
+curl -fsSL https://raw.githubusercontent.com/anil0403/gnome-theme/main/bootstrap.sh | bash
 ```
 
 Log out and back in when it finishes. The script works per user. It installs the
@@ -61,7 +61,7 @@ their own title bars.
 The theme uses SF Pro and SF Mono. Apple's license doesn't allow sharing them
 here, so if you don't already have them, the installer downloads them from
 [Apple](https://developer.apple.com/fonts/) (about 220 MB) into
-`~/.local/share/fonts/tahoe-gnome`. This needs `7z` and `cpio`, and the fonts are
+`~/.local/share/fonts/gnome-theme`. This needs `7z` and `cpio`, and the fonts are
 covered by Apple's license, not this repo's. If the download fails, your current
 fonts are kept.
 
@@ -69,13 +69,13 @@ fonts are kept.
 
 Run the install command again. It replaces the theme with the latest release and
 keeps your original backup. Your installed version is in
-`~/.local/state/tahoe-gnome/version`, and [VERSIONING.md](VERSIONING.md) explains
+`~/.local/state/gnome-theme/version`, and [VERSIONING.md](VERSIONING.md) explains
 what each release number means.
 
 ## Uninstall
 
 ```bash
-~/.local/state/tahoe-gnome/uninstall.sh
+~/.local/state/gnome-theme/uninstall.sh
 ```
 
 This removes what was installed and restores the files and settings it replaced.

@@ -43,6 +43,6 @@ the Qt plugin on Arch, Fedora, Debian and Ubuntu, adds every build to the archiv
 and publishes the release. To try the builds without releasing, run the workflow
 by hand from the Actions tab.
 
-The asset must be named `tahoe-gnome.tar.gz`, because `bootstrap.sh` downloads it
+The asset must be named `gnome-theme.tar.gz`, because `bootstrap.sh` downloads it
 from the latest release. Publishing a release therefore updates what the
 one-command installer delivers, so only push tags for tested builds.

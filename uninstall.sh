@@ -2,7 +2,7 @@
 # Removes the theme and restores what install.sh replaced.
 set -euo pipefail
 
-STATE=${XDG_STATE_HOME:-$HOME/.local/state}/tahoe-gnome
+STATE=${XDG_STATE_HOME:-$HOME/.local/state}/gnome-theme
 [ -e "$STATE/backup-done" ] || { echo 'error: nothing to uninstall' >&2; exit 1; }
 
 while read -r p; do
