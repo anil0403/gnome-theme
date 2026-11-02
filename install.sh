@@ -177,21 +177,22 @@ if "$qt"; then
     fi
     env_file=$CONFIG/environment.d/tahoe-qt.conf
     echo 'QT_QPA_PLATFORMTHEME=qt6ct' > "$env_file"
-    # The prebuilt 20px title-bar plugin uses Qt private API, so it only loads on
-    # the Qt version it was built for (see qt/build-decoration.sh).
-    decor=$ROOT/qt/wayland-decoration-client
+    # The prebuilt 20px title-bar plugin uses Qt private API, so releases carry
+    # one build per Qt version (see qt/build-decoration.sh).
     qt_core=$(ls /usr/lib*/libQt6Core.so.6.*.* /usr/lib/*/libQt6Core.so.6.*.* 2>/dev/null | head -1) || true
     qt_version=${qt_core##*.so.}
+    build=${qt_version%.*}-$(uname -m)
+    plugin=$ROOT/qt/wayland-decoration-client/$build/libqwhitesurgtkdecorations.so
     rm -rf "$QT_PLUGINS"
-    if [ "$(cat "$decor/BUILT_FOR" 2>/dev/null)" = "${qt_version%.*} $(uname -m)" ]; then
+    if [ -n "$qt_version" ] && [ -e "$plugin" ]; then
         mkdir -p "$QT_PLUGINS/wayland-decoration-client"
-        cp "$decor/libqwhitesurgtkdecorations.so" "$QT_PLUGINS/wayland-decoration-client/"
+        cp "$plugin" "$QT_PLUGINS/wayland-decoration-client/"
         echo "QT_PLUGIN_PATH=$QT_PLUGINS\${QT_PLUGIN_PATH:+:\$QT_PLUGIN_PATH}" >> "$env_file"
         echo 'QT_WAYLAND_DECORATION=whitesur-gtk' >> "$env_file"
     elif system_lib 'qt6/plugins/wayland-decoration-client/*whitesur*'; then
         echo 'QT_WAYLAND_DECORATION=whitesur-gtk' >> "$env_file"
     else
-        warn "the 20px Qt title-bar plugin is built for Qt $(cat "$decor/BUILT_FOR" 2>/dev/null), not ${qt_version%.*} $(uname -m), so Qt apps keep their own title bar"
+        warn "no prebuilt 20px Qt title-bar plugin for Qt $build, so Qt apps keep their own title bar"
     fi
 fi
 

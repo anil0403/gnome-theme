@@ -17,16 +17,13 @@ won't apply.
 ## Making a release
 
 1. Update `VERSION` and commit.
-2. If the Qt version on the build machine changed, rebuild the prebuilt Qt
-   title-bar plugin and commit it. It needs cmake and the Qt 6 development files:
+2. Build the Qt title-bar plugin for this machine, which the test needs. This
+   requires cmake and the Qt 6 development files:
 
    ```bash
    qt/build-decoration.sh
    ```
 
-   The plugin only loads on the Qt version in
-   `qt/wayland-decoration-client/BUILT_FOR`. Users on other Qt versions keep their
-   own Qt title bars.
 3. Run the test, with `--compare` if this machine runs the theme:
 
    ```bash
@@ -41,13 +38,11 @@ won't apply.
    git push origin main "$v"
    ```
 
-5. Build the archive and publish:
-
-   ```bash
-   git archive --prefix=tahoe-gnome/ -o tahoe-gnome.tar.gz "$v"
-   gh release create "$v" tahoe-gnome.tar.gz --title "$v" --generate-notes
-   ```
+The tag starts the [Release workflow](.github/workflows/release.yml). It builds
+the Qt plugin on Arch, Fedora, Debian and Ubuntu, adds every build to the archive,
+and publishes the release. To try the builds without releasing, run the workflow
+by hand from the Actions tab.
 
 The asset must be named `tahoe-gnome.tar.gz`, because `bootstrap.sh` downloads it
 from the latest release. Publishing a release therefore updates what the
-one-command installer delivers, so only mark tested builds as latest.
+one-command installer delivers, so only push tags for tested builds.

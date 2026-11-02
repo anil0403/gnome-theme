@@ -1,0 +1,68 @@
+# Builds the 20px Qt title-bar plugin for each distro's Qt, then publishes the
+# release archive that bootstrap.sh downloads. Run it by hand to test the builds.
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  qt-plugin:
+    name: Qt plugin (${{ matrix.image }})
+    runs-on: ubuntu-latest
+    container: ${{ matrix.image }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: archlinux:latest
+            deps: pacman -Syu --noconfirm --needed git cmake make gcc qt6-base qt6-svg qt6-wayland
+          - image: fedora:latest
+            deps: >-
+              dnf install -y git findutils cmake make gcc-c++ qt6-qtbase-devel
+              qt6-qtbase-private-devel qt6-qtsvg-devel qt6-qtwayland-devel
+          - image: debian:stable
+            deps: >-
+              apt-get update && apt-get install -y --no-install-recommends ca-certificates
+              git cmake make g++ qt6-base-dev qt6-base-private-dev qt6-svg-dev
+              qt6-wayland-dev qt6-wayland-private-dev
+          - image: ubuntu:rolling
+            deps: >-
+              apt-get update && apt-get install -y --no-install-recommends ca-certificates
+              git cmake make g++ qt6-base-dev qt6-base-private-dev qt6-svg-dev
+              qt6-wayland-dev qt6-wayland-private-dev
+    steps:
+      - run: ${{ matrix.deps }}
+        env:
+          DEBIAN_FRONTEND: noninteractive
+      - uses: actions/checkout@v4
+      - run: qt/build-decoration.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: qt-plugin-${{ strategy.job-index }}
+          path: qt/wayland-decoration-client
+
+  release:
+    needs: qt-plugin
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: qt-plugin-*
+          merge-multiple: true
+          path: qt/wayland-decoration-client
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git archive --prefix=tahoe-gnome/ -o tahoe-gnome.tar HEAD
+          tar --transform 's,^,tahoe-gnome/,' -rf tahoe-gnome.tar qt/wayland-decoration-client
+          gzip tahoe-gnome.tar
+          tar -tzf tahoe-gnome.tar.gz | grep libqwhitesurgtkdecorations.so
+          gh release create "$GITHUB_REF_NAME" tahoe-gnome.tar.gz --title "$GITHUB_REF_NAME" --generate-notes

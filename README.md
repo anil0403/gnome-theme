@@ -51,10 +51,10 @@ If `qt6ct` or Kvantum is missing, the installer installs them with your package
 manager (pacman, apt or dnf), which asks for your password. This is the only step
 that needs root. If it fails, Qt apps keep their own look.
 
-The 20px title-bar buttons for Qt apps come from a prebuilt plugin. It only works
-with the Qt version it was built for, listed in
-`qt/wayland-decoration-client/BUILT_FOR`. On other Qt versions, Qt apps keep their
-own title bars.
+The 20px title-bar buttons for Qt apps come from a prebuilt plugin. Each release
+includes builds for the current Qt on Arch, Fedora, Debian and Ubuntu, and the
+installer picks the one matching your Qt. On other Qt versions, Qt apps keep
+their own title bars.
 
 ### Fonts
 
