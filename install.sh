@@ -93,6 +93,18 @@ if "$qt"; then
         "$CONFIG/qt6ct/qt6ct.conf" "$CONFIG/environment.d/tahoe-qt.conf"
         "$CONFIG/kdeglobals" "$DATA/color-schemes/TahoeGlassDark.colors" "$QT_PLUGINS")
 fi
+# Flatpak apps can't see the theme, so overrides give them read access to it.
+FLATPAK_QT=$DATA/gnome-theme-qt6-flatpak
+OVERRIDES=$DATA/flatpak/overrides
+kde_apps=()
+if command -v flatpak >/dev/null; then
+    paths+=("$OVERRIDES/global" "$FLATPAK_QT")
+    while read -r app runtime; do
+        [[ $runtime == org.kde.Platform/* ]] || continue
+        kde_apps+=("$app $runtime")
+        paths+=("$OVERRIDES/$app")
+    done < <(flatpak list --app --columns=application,runtime)
+fi
 
 # Back up each file and setting the first time any install is about to change
 # it, so a re-run never backs up our own files and upgrades cover new ones.
@@ -197,6 +209,30 @@ if "$qt"; then
     else
         warn "no prebuilt 20px Qt title-bar plugin for Qt $build, so Qt apps keep their own title bar"
     fi
+fi
+
+if command -v flatpak >/dev/null; then
+    # GTK and libadwaita apps, including ones installed later.
+    flatpak override --user --filesystem=xdg-config/gtk-3.0:ro \
+        --filesystem=xdg-config/gtk-4.0:ro --filesystem='~/.themes:ro'
+    # Qt apps need the title-bar plugin built for their KDE runtime's Qt.
+    rm -rf "$FLATPAK_QT"
+    for entry in "${kde_apps[@]}"; do
+        read -r app runtime <<< "$entry"
+        IFS=/ read -r _ arch version <<< "$runtime"
+        plugin=$ROOT/qt/wayland-decoration-client/flatpak-$version-$arch/libqwhitesurgtkdecorations.so
+        if [ ! -e "$plugin" ]; then
+            warn "no 20px title-bar plugin for the KDE $version Flatpak runtime, so $app keeps its own title bar"
+            continue
+        fi
+        mkdir -p "$FLATPAK_QT/$version/wayland-decoration-client"
+        cp "$plugin" "$FLATPAK_QT/$version/wayland-decoration-client/"
+        # The override replaces the runtime's plugin path, so keep that after ours.
+        runtime_path=$(flatpak info -m "org.kde.Platform/$arch/$version" | sed -n 's/^QT_PLUGIN_PATH *= *//p')
+        flatpak override --user "$app" --filesystem="$FLATPAK_QT:ro" \
+            --env="QT_PLUGIN_PATH=$FLATPAK_QT/$version${runtime_path:+:$runtime_path}" \
+            --env=QT_WAYLAND_DECORATION=whitesur-gtk
+    done
 fi
 
 # The families dconf/fonts.ini names. No grep -q pipe: under pipefail it fails at random.

@@ -60,6 +60,14 @@ if command -v qt6ct >/dev/null; then
     [ -e "$HOME/.local/share/gnome-theme-qt6/wayland-decoration-client/libqwhitesurgtkdecorations.so" ] ||
         fail 'Qt title-bar plugin missing'
 fi
+overrides=$HOME/.local/share/flatpak/overrides
+if command -v flatpak >/dev/null; then
+    grep -q 'xdg-config/gtk-4.0:ro' "$overrides/global" || fail 'Flatpak GTK override missing'
+    if compgen -G "$ROOT/qt/wayland-decoration-client/flatpak-*" >/dev/null &&
+        [[ $(flatpak list --app --columns=runtime) == *org.kde.Platform/* ]]; then
+        grep -rq '^QT_PLUGIN_PATH=.*gnome-theme-qt6-flatpak' "$overrides" || fail 'Flatpak Qt override missing'
+    fi
+fi
 enabled=$(dconf read /org/gnome/shell/enabled-extensions)
 [[ $enabled == *keep-me@example.com* ]] || fail 'dropped an existing extension'
 [[ $enabled == *UbuntuTahoeDock@* ]] || fail 'dock not enabled'
@@ -98,5 +106,7 @@ want /org/gnome/shell/enabled-extensions "['keep-me@example.com', 'dash-to-dock@
 [ ! -e "$HOME/.local/share/fonts/gnome-theme" ] || fail 'fonts not removed'
 [ ! -e "$HOME/.local/share/gnome-theme-qt6" ] || fail 'Qt plugin not removed'
 [ ! -e "$HOME/.config/environment.d/tahoe-qt.conf" ] || fail 'Qt environment not removed'
+[ -z "$(ls -A "$overrides" 2>/dev/null)" ] || fail 'Flatpak overrides not removed'
+[ ! -e "$HOME/.local/share/gnome-theme-qt6-flatpak" ] || fail 'Flatpak Qt plugin not removed'
 CHECK
 echo 'PASS'
