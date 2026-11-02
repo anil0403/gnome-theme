@@ -20,7 +20,7 @@
      inkscape:showpageshadow="2"
      inkscape:pageopacity="0.0"
      inkscape:pagecheckerboard="0"
-     inkscape:deskcolor="#d1d1d1"
+     inkscape:deskcolor="#c9cfd9"
      inkscape:zoom="3.3587572"
      inkscape:cx="-3.8704792"
      inkscape:cy="69.370897"
@@ -142,7 +142,7 @@
        y2="-38.74"
        gradientTransform="matrix(.5297 0 0 .5297 -1.0863 35.368)"
        gradientUnits="userSpaceOnUse"><stop
-         stop-color="#878887"
+         stop-color="#6080af"
          offset="0"
          id="stop17" /><stop
          stop-color="#d8e3e9"
@@ -155,10 +155,10 @@
        y2="-39.838"
        gradientTransform="matrix(.5297 0 0 .5297 -1.0863 35.368)"
        gradientUnits="userSpaceOnUse"><stop
-         stop-color="#6c6c6a"
+         stop-color="#426394"
          offset="0"
          id="stop19" /><stop
-         stop-color="#e3ebef"
+         stop-color="#e6e8ec"
          offset="1"
          id="stop20" /></linearGradient><linearGradient
        id="linearGradient1590"
@@ -223,10 +223,10 @@
        y2="-38.74"
        gradientTransform="matrix(.5297 0 0 .5297 -1.0863 42.768)"
        gradientUnits="userSpaceOnUse"><stop
-         stop-color="#3468e0"
+         stop-color="#34a1e0"
          offset="0"
          id="stop30" /><stop
-         stop-color="#61dafc"
+         stop-color="#61c3fc"
          offset="1"
          id="stop31" /></linearGradient><linearGradient
        id="linearGradient1655"
@@ -236,10 +236,10 @@
        y2="-39.838"
        gradientTransform="matrix(.5297 0 0 .5297 -1.0863 42.768)"
        gradientUnits="userSpaceOnUse"><stop
-         stop-color="#29438e"
+         stop-color="#29698e"
          offset="0"
          id="stop32" /><stop
-         stop-color="#90dcec"
+         stop-color="#90caec"
          offset=".946"
          id="stop33" /><stop
          stop-color="#abe2eb"
@@ -281,7 +281,7 @@
        y2="1.852"
        gradientTransform="matrix(1.9999 0 0 1.9999 .00011 .02433)"
        gradientUnits="userSpaceOnUse"><stop
-         stop-color="#e8e8e8"
+         stop-color="#e5e7eb"
          offset="0"
          id="stop40" /><stop
          stop-color="#fcfcfc"

@@ -5,3 +5,6 @@ s/ceButtonMarginLeft = 10;/ceButtonMarginLeft = 14;/
 s/ceButtonMarginBottom = 4;/ceButtonMarginBottom = 0;/
 s/setSize(QSize(16, 16))/setSize(QSize(ceButtonWidth, ceButtonWidth))/
 /adjustedBtnRect.translate(4, 4);/d
+# Dark title bars in the wallpaper's navy, matching the GTK title bar.
+s/QColor(0x2e2e32)/QColor(0x202f46)/g
+s/QColor(0x222226)/QColor(0x162132)/
