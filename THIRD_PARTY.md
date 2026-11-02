@@ -7,8 +7,8 @@ summary, not legal advice.
 
 | Path | Comes from | License |
 |---|---|---|
-| `theme/MacTahoe-Dark/` | [MacTahoe-gtk-theme](https://github.com/vinceliuice/MacTahoe-gtk-theme), as adjusted by [mactahoe-ubuntu](https://github.com/adfoxtheme/mactahoe-ubuntu) and here | MIT, see `theme/MacTahoe-Dark/COPYING` |
-| `theme/MacTahoe-Dark/gnome-shell/gnome-shell.css` | Generated from GNOME Shell's stylesheet | Keeps its LGPL-2.1 header |
+| `theme/MacTheme-Dark/` | [MacTahoe-gtk-theme](https://github.com/vinceliuice/MacTahoe-gtk-theme), as adjusted by [mactahoe-ubuntu](https://github.com/adfoxtheme/mactahoe-ubuntu) and here | MIT, see `theme/MacTheme-Dark/COPYING` |
+| `theme/MacTheme-Dark/gnome-shell/gnome-shell.css` | Generated from GNOME Shell's stylesheet | Keeps its LGPL-2.1 header |
 | `qt/Kvantum/` | Treated as derived from [MacTahoe-kde](https://github.com/vinceliuice/MacTahoe-kde) | LGPL-3.0, see `qt/LICENSE` |
 | `patches/UbuntuTahoeDock.patch` | Changes to a fork of [Dash to Dock](https://github.com/micheleg/dash-to-dock) | GPL-2.0-or-later, see `patches/GPL-2.0.txt` |
 | `patches/UbuntuTahoeSpotlight.patch` | Changes to a file marked GPL-3.0-or-later | GPL-3.0-or-later, see `patches/GPL-3.0.txt` |
@@ -25,7 +25,7 @@ reproduce this theme, with as little upstream text as practical. `UbuntuTahoe`
 also includes code that references [Blur My Shell](https://github.com/aunetx/blur-my-shell),
 which is GPL-3.0.
 
-Parts of `theme/MacTahoe-Dark/` also contain mactahoe-ubuntu's adjustments to the
+Parts of `theme/MacTheme-Dark/` also contain mactahoe-ubuntu's adjustments to the
 MIT theme, such as `gnome-shell.css`.
 
 If you are an author of this upstream work and would like anything changed or
@@ -36,7 +36,7 @@ removed, please open an issue.
 | Component | Source | License |
 |---|---|---|
 | UbuntuTahoe, UbuntuTahoeDock, UbuntuTahoeClipboard, UbuntuTahoeSpotlight | [mactahoe-ubuntu](https://github.com/adfoxtheme/mactahoe-ubuntu) at a pinned commit | See above |
-| MacTahoe icons and cursors | [MacTahoe-icon-theme](https://github.com/vinceliuice/MacTahoe-icon-theme) at a pinned commit | GPL-3.0 |
+| MacTheme icons and cursors | [MacTahoe-icon-theme](https://github.com/vinceliuice/MacTahoe-icon-theme) at a pinned commit | GPL-3.0 |
 
 ## Not included
 

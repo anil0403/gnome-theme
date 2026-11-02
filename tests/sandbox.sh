@@ -43,12 +43,17 @@ cp "$HOME/.config/gtk-3.0/gtk.css" "$STATE/backup$HOME/.config/gtk-3.0/"
 echo "@import 'colors.css';" > "$HOME/.config/gtk-3.0/gtk.css"
 touch "$HOME/.config/gtk-3.0/colors.css"
 echo 1.0.1 > "$STATE/version"
+# Earlier releases installed the theme as MacTahoe. One the user had themselves stays.
+mkdir -p "$HOME/.themes/MacTahoe-Dark" "$HOME/.local/share/icons/MacTahoe-mine"
+echo "$HOME/.themes/MacTahoe-Dark" >> "$STATE/paths"
 "$ROOT/install.sh" </dev/null >/dev/null   # a re-run must not overwrite the backup
 [ ! -e "$HOME/.config/gtk-3.0/colors.css" ] || fail 'v1.0 override left behind'
 [ ! -e "$STATE" ] && [ -e "$HOME/.local/state/gnome-theme/backup-done" ] || fail 'old state not moved'
+[ ! -e "$HOME/.themes/MacTahoe-Dark" ] || fail 'old MacTahoe theme left behind'
+[ -e "$HOME/.local/share/icons/MacTahoe-mine" ] || fail "removed a MacTahoe theme we didn't install"
 
-want /org/gnome/desktop/interface/gtk-theme "'MacTahoe-Dark'"
-want /org/gnome/shell/extensions/user-theme/name "'MacTahoe-Dark'"
+want /org/gnome/desktop/interface/gtk-theme "'MacTheme-Dark'"
+want /org/gnome/shell/extensions/user-theme/name "'MacTheme-Dark'"
 want /org/gnome/shell/favorite-apps "['mine.desktop']"
 want /org/gnome/desktop/interface/monospace-font-name "'SF Mono 11'"
 want /org/gnome/desktop/background/picture-uri "'file://$HOME/.local/share/backgrounds/gnome-theme.png'"
@@ -72,21 +77,24 @@ enabled=$(dconf read /org/gnome/shell/enabled-extensions)
 [[ $enabled == *keep-me@example.com* ]] || fail 'dropped an existing extension'
 [[ $enabled == *UbuntuTahoeDock@* ]] || fail 'dock not enabled'
 [[ $enabled != *dash-to-dock* ]] || fail 'conflicting dock still enabled'
-[ "$(readlink "$HOME/.config/gtk-4.0/gtk.css")" = "$HOME/.themes/MacTahoe-Dark/gtk-4.0/gtk.css" ] ||
+[ "$(readlink "$HOME/.config/gtk-4.0/gtk.css")" = "$HOME/.themes/MacTheme-Dark/gtk-4.0/gtk.css" ] ||
     fail 'gtk4 gtk.css should link into the theme'
 [ -e "$HOME/.config/gtk-4.0/assets/scalable" ] || fail 'gtk4 assets link'
 [ "$(cat "$HOME/.config/gtk-3.0/gtk.css")" = '/* mine */' ] || fail 'touched the gtk3 user css'
-for f in MacTahoe-blue-dark/index.theme MacTahoe-cursors/index.theme; do
+for f in MacTheme-blue-dark/index.theme MacTheme-cursors/index.theme; do
     [ -e "$HOME/.local/share/icons/$f" ] || fail "missing $f"
 done
+grep -qx 'Name=MacTheme-blue-dark' "$HOME/.local/share/icons/MacTheme-blue-dark/index.theme" ||
+    fail 'icon theme not named MacTheme-blue-dark'
+! grep -rqs MacTahoe "$HOME"/.local/share/icons/MacTheme*/index.theme || fail 'MacTahoe left in an icon theme name'
 
 if [ "$MODE" = --compare ]; then
     live=$REAL_HOME/.local/share/gnome-shell/extensions
     diff -r -x gschemas.compiled -x '*.bak' "$live" "$HOME/.local/share/gnome-shell/extensions" ||
         fail 'extensions differ from the live install'
-    diff -r -x COPYING "$REAL_HOME/.themes/MacTahoe-Dark" "$HOME/.themes/MacTahoe-Dark" ||
+    diff -r -x COPYING "$REAL_HOME/.themes/MacTheme-Dark" "$HOME/.themes/MacTheme-Dark" ||
         fail 'theme differs from the live install'
-    for icon in MacTahoe-blue-dark MacTahoe-cursors; do
+    for icon in MacTheme-blue-dark MacTheme-cursors; do
         diff -rq -x icon-theme.cache "$REAL_HOME/.local/share/icons/$icon" "$HOME/.local/share/icons/$icon" ||
             fail "$icon differs from the live install"
     done
@@ -101,8 +109,8 @@ want /org/gnome/desktop/background/picture-uri "'file:///mine.png'"
 [ ! -e "$HOME/.local/share/backgrounds/gnome-theme.png" ] || fail 'wallpaper not removed'
 want /org/gnome/shell/enabled-extensions "['keep-me@example.com', 'dash-to-dock@micxgx.gmail.com']"
 [ "$(cat "$HOME/.config/gtk-3.0/gtk.css")" = '/* mine */' ] || fail 'gtk.css not restored'
-[ ! -e "$HOME/.themes/MacTahoe-Dark" ] || fail 'theme not removed'
-[ ! -e "$HOME/.local/share/icons/MacTahoe-blue-dark" ] || fail 'icons not removed'
+[ ! -e "$HOME/.themes/MacTheme-Dark" ] || fail 'theme not removed'
+[ ! -e "$HOME/.local/share/icons/MacTheme-blue-dark" ] || fail 'icons not removed'
 [ ! -e "$HOME/.local/share/fonts/gnome-theme" ] || fail 'fonts not removed'
 [ ! -e "$HOME/.local/share/gnome-theme-qt6" ] || fail 'Qt plugin not removed'
 [ ! -e "$HOME/.config/environment.d/tahoe-qt.conf" ] || fail 'Qt environment not removed'

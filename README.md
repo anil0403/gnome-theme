@@ -10,8 +10,8 @@ may look different.
 
 ## What you get
 
-- `MacTahoe-Dark` for GTK 3, GTK 4 and libadwaita, GNOME Shell and window frames
-- `MacTahoe-blue-dark` icons, `MacTahoe-cursors` cursors and blue accents
+- `MacTheme-Dark` for GTK 3, GTK 4 and libadwaita, GNOME Shell and window frames
+- `MacTheme-blue-dark` icons, `MacTheme-cursors` cursors and blue accents
 - SF Pro for the interface and SF Mono for code, downloaded from Apple
 - Larger 20px traffic-light buttons on the left of the title bar
 - A bottom dock with hidden trash, where clicking a focused app minimizes it
