@@ -14,9 +14,16 @@ Bumping `EXTENSIONS_SHA` or `ICONS_SHA` in `install.sh` is at least `MINOR`,
 because the pinned upstream code changes. Regenerate the patches first, or they
 won't apply.
 
+## Pull requests
+
+Changes reach `main` through pull requests. The [CI workflow](.github/workflows/ci.yml)
+lints the scripts and builds the Qt plugin for every target, and once all of it
+passes it rebase-merges the pull request into `main` by itself. Open a pull
+request as a draft to hold it back, and mark it ready when it should merge.
+
 ## Making a release
 
-1. Update `VERSION` and commit.
+1. Update `VERSION` on a branch and commit.
 2. Build the Qt title-bar plugin for this machine, which the test needs. This
    requires cmake and the Qt 6 development files:
 
@@ -30,17 +37,19 @@ won't apply.
    tests/sandbox.sh --compare
    ```
 
-4. Tag and push:
+4. Push the branch and open a pull request. When CI has merged it, tag `main`
+   and push the tag:
 
    ```bash
+   git checkout main && git pull
    v=v$(cat VERSION)
    git tag -a "$v" -m "$v"
-   git push origin main "$v"
+   git push origin "$v"
    ```
 
-The tag starts the [Release workflow](.github/workflows/release.yml). It builds
-the Qt plugin on Arch, Fedora, Debian, Ubuntu and the KDE Flatpak runtimes, adds
-every build to the archive, and publishes the release. To try the builds without
+The tag runs the [CI workflow](.github/workflows/ci.yml) again. It builds the Qt
+plugin on Arch, Fedora, Debian, Ubuntu and the KDE Flatpak runtimes, adds every
+build to the archive, and publishes the release. To try the builds without
 releasing, run the workflow by hand from the Actions tab.
 
 The asset must be named `gnome-theme.tar.gz`, because `bootstrap.sh` downloads it

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Builds the 20px Qt title-bar plugin for this machine's Qt into
 # qt/wayland-decoration-client/<qt minor>-<arch>/. It uses Qt private API, so
-# each build only loads on that Qt version. The release workflow runs this on
+# each build only loads on that Qt version. The CI workflow runs this on
 # several distros, and the tests need a local build. Needs cmake, a C++ compiler
 # and the Qt 6 base, svg and wayland development files, including private headers.
 # For Flatpak apps, run it in the KDE SDK their runtime matches:
