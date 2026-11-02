@@ -8992,7 +8992,7 @@
   <path
      d="m 129.7369,721.08119 h 48 v 48.00004 h -48 z"
      id="tooltip-normal"
-     style="opacity:0.75;fill:#333333;fill-opacity:1;fill-rule:evenodd;stroke:none;stroke-width:0.99999994"
+     style="opacity:0.75;fill:#1F293C;fill-opacity:1;fill-rule:evenodd;stroke:none;stroke-width:0.99999994"
      inkscape:connector-curvature="0" />
   <g
      transform="translate(7.4798945,17.328239)"
@@ -9001,7 +9001,7 @@
     <path
        d="m 116.257,703.753 h 6 v 48 h -6 z"
        id="tooltip-normal-left0"
-       style="opacity:0.75;fill:#333333;fill-opacity:1;fill-rule:evenodd;stroke-width:1"
+       style="opacity:0.75;fill:#1F293C;fill-opacity:1;fill-rule:evenodd;stroke-width:1"
        inkscape:connector-curvature="0" />
   </g>
   <g

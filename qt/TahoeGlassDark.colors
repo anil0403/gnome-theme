@@ -3,8 +3,8 @@ ColorScheme=TahoeGlassDark
 Name=Tahoe Glass Dark
 
 [Colors:Window]
-BackgroundNormal=38,38,38
-BackgroundAlternate=38,38,38
+BackgroundNormal=38,50,72
+BackgroundAlternate=38,50,72
 ForegroundNormal=222,222,222
 ForegroundInactive=157,157,157
 ForegroundActive=10,132,255
@@ -59,8 +59,8 @@ DecorationFocus=10,132,255
 DecorationHover=10,132,255
 
 [Colors:Tooltip]
-BackgroundNormal=44,44,44
-BackgroundAlternate=44,44,44
+BackgroundNormal=31,41,60
+BackgroundAlternate=31,41,60
 ForegroundNormal=223,223,223
 ForegroundInactive=160,160,160
 ForegroundActive=10,132,255
@@ -73,8 +73,8 @@ DecorationFocus=10,132,255
 DecorationHover=10,132,255
 
 [Colors:Header]
-BackgroundNormal=36,36,36
-BackgroundAlternate=36,36,36
+BackgroundNormal=38,50,72
+BackgroundAlternate=38,50,72
 ForegroundNormal=222,222,222
 ForegroundInactive=156,156,156
 ForegroundActive=10,132,255
