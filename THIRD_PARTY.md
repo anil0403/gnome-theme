@@ -7,7 +7,7 @@ summary, not legal advice.
 
 | Path | Comes from | License |
 |---|---|---|
-| `theme/MacTahoe-Dark/`, `gtk/` | [MacTahoe-gtk-theme](https://github.com/vinceliuice/MacTahoe-gtk-theme), as adjusted by [mactahoe-ubuntu](https://github.com/adfoxtheme/mactahoe-ubuntu) and here | MIT, see `theme/MacTahoe-Dark/COPYING` |
+| `theme/MacTahoe-Dark/` | [MacTahoe-gtk-theme](https://github.com/vinceliuice/MacTahoe-gtk-theme), as adjusted by [mactahoe-ubuntu](https://github.com/adfoxtheme/mactahoe-ubuntu) and here | MIT, see `theme/MacTahoe-Dark/COPYING` |
 | `theme/MacTahoe-Dark/gnome-shell/gnome-shell.css` | Generated from GNOME Shell's stylesheet | Keeps its LGPL-2.1 header |
 | `qt/Kvantum/` | Treated as derived from [MacTahoe-kde](https://github.com/vinceliuice/MacTahoe-kde) | LGPL-3.0, see `qt/LICENSE` |
 | `patches/UbuntuTahoeDock.patch` | Changes to a fork of [Dash to Dock](https://github.com/micheleg/dash-to-dock) | GPL-2.0-or-later, see `patches/GPL-2.0.txt` |

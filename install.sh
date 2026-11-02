@@ -48,11 +48,9 @@ shell_major=$(gnome-shell --version | grep -oE '[0-9]+' | head -1)
 qt=false
 if command -v qt6ct >/dev/null && command -v kvantummanager >/dev/null; then qt=true; fi
 
+GTK4_LINKS=(gtk.css gtk-dark.css assets windows-assets)
 paths=("$HOME/.themes/MacTahoe-Dark")
-for f in gtk.css colors.css settings.ini; do paths+=("$CONFIG/gtk-3.0/$f"); done
-for f in gtk.css gtk-dark.css gtk-Dark.css colors.css settings.ini assets windows-assets; do
-    paths+=("$CONFIG/gtk-4.0/$f")
-done
+for f in "${GTK4_LINKS[@]}"; do paths+=("$CONFIG/gtk-4.0/$f"); done
 for name in "${EXTENSIONS[@]}"; do paths+=("$EXT_DIR/$name@adfoxtheme.github.io"); done
 for icon in MacTahoe MacTahoe-light MacTahoe-dark MacTahoe-blue MacTahoe-blue-light \
     MacTahoe-blue-dark MacTahoe-cursors MacTahoe-dark-cursors; do
@@ -110,14 +108,23 @@ for pair in dist:MacTahoe-cursors dist-dark:MacTahoe-dark-cursors; do
 done
 
 echo 'Installing the theme...'
-mkdir -p "$HOME/.themes" "$EXT_DIR" "$CONFIG/gtk-3.0" "$CONFIG/gtk-4.0"
+mkdir -p "$HOME/.themes" "$EXT_DIR" "$CONFIG/gtk-4.0"
 rm -rf "$HOME/.themes/MacTahoe-Dark"
 cp -a "$ROOT/theme/MacTahoe-Dark" "$HOME/.themes/"
-cp "$ROOT"/gtk/gtk-3.0/* "$CONFIG/gtk-3.0/"
-rm -rf "$CONFIG/gtk-4.0/assets" "$CONFIG/gtk-4.0/windows-assets"
-cp -r "$ROOT"/gtk/gtk-4.0/* "$CONFIG/gtk-4.0/"
-ln -sfn gtk-Dark.css "$CONFIG/gtk-4.0/gtk.css"
-ln -sfn gtk-Dark.css "$CONFIG/gtk-4.0/gtk-dark.css"
+# v1.0.x copied override files into ~/.config; put back what they replaced.
+if [[ $(cat "$STATE/version" 2>/dev/null) == 1.0.* ]]; then
+    for f in gtk-3.0/gtk.css gtk-3.0/colors.css gtk-3.0/settings.ini \
+        gtk-4.0/gtk-Dark.css gtk-4.0/colors.css gtk-4.0/settings.ini; do
+        rm -rf "${CONFIG:?}/$f"
+        [ ! -e "$STATE/backup$CONFIG/$f" ] || cp -a "$STATE/backup$CONFIG/$f" "$CONFIG/$f"
+    done
+fi
+# libadwaita ignores the gtk-theme setting and only reads ~/.config/gtk-4.0,
+# so point that at the theme rather than keeping a second copy.
+for f in "${GTK4_LINKS[@]}"; do
+    rm -rf "${CONFIG:?}/gtk-4.0/$f"
+    ln -s "$HOME/.themes/MacTahoe-Dark/gtk-4.0/$f" "$CONFIG/gtk-4.0/$f"
+done
 for name in "${EXTENSIONS[@]}"; do
     rm -rf "$EXT_DIR/$name@adfoxtheme.github.io"
     cp -a "$tmp/extensions/vendor/gnome-extensions/$name@adfoxtheme.github.io" "$EXT_DIR/"

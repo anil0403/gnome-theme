@@ -28,7 +28,15 @@ dconf write /org/gnome/shell/enabled-extensions "['keep-me@example.com', 'dash-t
 dconf write /org/gnome/shell/favorite-apps "['mine.desktop']"
 
 "$ROOT/install.sh" </dev/null
+# Fake a v1.0.x install, which backed up and replaced the gtk3 user css.
+STATE=$HOME/.local/state/tahoe-gnome
+mkdir -p "$STATE/backup$HOME/.config/gtk-3.0"
+cp "$HOME/.config/gtk-3.0/gtk.css" "$STATE/backup$HOME/.config/gtk-3.0/"
+echo "@import 'colors.css';" > "$HOME/.config/gtk-3.0/gtk.css"
+touch "$HOME/.config/gtk-3.0/colors.css"
+echo 1.0.1 > "$STATE/version"
 "$ROOT/install.sh" </dev/null >/dev/null   # a re-run must not overwrite the backup
+[ ! -e "$HOME/.config/gtk-3.0/colors.css" ] || fail 'v1.0 override left behind'
 
 want /org/gnome/desktop/interface/gtk-theme "'MacTahoe-Dark'"
 want /org/gnome/shell/extensions/user-theme/name "'MacTahoe-Dark'"
@@ -37,7 +45,10 @@ enabled=$(dconf read /org/gnome/shell/enabled-extensions)
 [[ $enabled == *keep-me@example.com* ]] || fail 'dropped an existing extension'
 [[ $enabled == *UbuntuTahoeDock@* ]] || fail 'dock not enabled'
 [[ $enabled != *dash-to-dock* ]] || fail 'conflicting dock still enabled'
-[ "$(readlink "$HOME/.config/gtk-4.0/gtk.css")" = gtk-Dark.css ] || fail 'gtk.css link'
+[ "$(readlink "$HOME/.config/gtk-4.0/gtk.css")" = "$HOME/.themes/MacTahoe-Dark/gtk-4.0/gtk.css" ] ||
+    fail 'gtk4 gtk.css should link into the theme'
+[ -e "$HOME/.config/gtk-4.0/assets/scalable" ] || fail 'gtk4 assets link'
+[ "$(cat "$HOME/.config/gtk-3.0/gtk.css")" = '/* mine */' ] || fail 'touched the gtk3 user css'
 for f in MacTahoe-blue-dark/index.theme MacTahoe-cursors/index.theme; do
     [ -e "$HOME/.local/share/icons/$f" ] || fail "missing $f"
 done
@@ -48,8 +59,6 @@ if [ "$MODE" = --compare ]; then
         fail 'extensions differ from the live install'
     diff -r -x COPYING "$REAL_HOME/.themes/MacTahoe-Dark" "$HOME/.themes/MacTahoe-Dark" ||
         fail 'theme differs from the live install'
-    diff "$REAL_HOME/.config/gtk-4.0/gtk-Dark.css" "$HOME/.config/gtk-4.0/gtk-Dark.css" ||
-        fail 'gtk4 css differs from the live install'
     for icon in MacTahoe-blue-dark MacTahoe-cursors; do
         diff -rq -x icon-theme.cache "$REAL_HOME/.local/share/icons/$icon" "$HOME/.local/share/icons/$icon" ||
             fail "$icon differs from the live install"
