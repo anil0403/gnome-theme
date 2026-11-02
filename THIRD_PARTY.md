@@ -13,6 +13,8 @@ summary, not legal advice.
 | `patches/UbuntuTahoeDock.patch` | Changes to a fork of [Dash to Dock](https://github.com/micheleg/dash-to-dock) | GPL-2.0-or-later, see `patches/GPL-2.0.txt` |
 | `patches/UbuntuTahoeSpotlight.patch` | Changes to a file marked GPL-3.0-or-later | GPL-3.0-or-later, see `patches/GPL-3.0.txt` |
 | `patches/UbuntuTahoe.patch`, `patches/UbuntuTahoe-stylesheet.sed`, `patches/UbuntuTahoeClipboard.patch` | Changes to mactahoe-ubuntu | Not MIT, see below |
+| `qt/wayland-decoration-client/`, `patches/QWhiteSurGtkDecorations.sed` | [QWhiteSurGtkDecorations](https://github.com/FengZhongShaoNian/QWhiteSurGtkDecorations) 0.2.0, built by `qt/build-decoration.sh` with 20px buttons | LGPL-2.1, see `qt/wayland-decoration-client/LICENSE`. The source is upstream's tag 0.2.0 plus the sed patch |
+| `wallpaper/tahoe-gnome.png` | "Arch Linux Wallpaper 4K" from Wallpaper Alchemy, a free wallpaper source | Not MIT: the original author's terms apply. The Arch Linux logo is a trademark of Arch Linux |
 
 ### Patches to mactahoe-ubuntu
 

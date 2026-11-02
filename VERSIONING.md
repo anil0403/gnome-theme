@@ -17,13 +17,23 @@ won't apply.
 ## Making a release
 
 1. Update `VERSION` and commit.
-2. Run the test, with `--compare` if this machine runs the theme:
+2. If the Qt version on the build machine changed, rebuild the prebuilt Qt
+   title-bar plugin and commit it. It needs cmake and the Qt 6 development files:
+
+   ```bash
+   qt/build-decoration.sh
+   ```
+
+   The plugin only loads on the Qt version in
+   `qt/wayland-decoration-client/BUILT_FOR`. Users on other Qt versions keep their
+   own Qt title bars.
+3. Run the test, with `--compare` if this machine runs the theme:
 
    ```bash
    tests/sandbox.sh --compare
    ```
 
-3. Tag and push:
+4. Tag and push:
 
    ```bash
    v=v$(cat VERSION)
@@ -31,7 +41,7 @@ won't apply.
    git push origin main "$v"
    ```
 
-4. Build the archive and publish:
+5. Build the archive and publish:
 
    ```bash
    git archive --prefix=tahoe-gnome/ -o tahoe-gnome.tar.gz "$v"

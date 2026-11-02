@@ -11,6 +11,11 @@ trap 'rm -rf "$box"' EXIT
 mkdir -p "$box/home/.config/gtk-3.0" "$box/run"
 chmod 700 "$box/run"
 echo '/* mine */' > "$box/home/.config/gtk-3.0/gtk.css"
+# The test must never install system packages, so sudo always fails here.
+mkdir -p "$box/bin"
+printf '#!/bin/sh\nexit 1\n' > "$box/bin/sudo"
+chmod +x "$box/bin/sudo"
+export PATH=$box/bin:$PATH
 
 export HOME=$box/home XDG_RUNTIME_DIR=$box/run
 # Without these, gvfs starts on the private bus and pins a FUSE mount inside the box.
@@ -26,6 +31,7 @@ want() { [ "$(dconf read "$1")" = "$2" ] || fail "$1 = $(dconf read "$1"), wante
 dconf write /org/gnome/desktop/interface/gtk-theme "'Adwaita'"
 dconf write /org/gnome/shell/enabled-extensions "['keep-me@example.com', 'dash-to-dock@micxgx.gmail.com']"
 dconf write /org/gnome/shell/favorite-apps "['mine.desktop']"
+dconf write /org/gnome/desktop/background/picture-uri "'file:///mine.png'"
 
 "$ROOT/install.sh" </dev/null
 # Fake a v1.0.x install, which backed up and replaced the gtk3 user css.
@@ -42,6 +48,15 @@ want /org/gnome/desktop/interface/gtk-theme "'MacTahoe-Dark'"
 want /org/gnome/shell/extensions/user-theme/name "'MacTahoe-Dark'"
 want /org/gnome/shell/favorite-apps "['mine.desktop']"
 want /org/gnome/desktop/interface/monospace-font-name "'SF Mono 11'"
+want /org/gnome/desktop/background/picture-uri "'file://$HOME/.local/share/backgrounds/tahoe-gnome.png'"
+cmp -s "$ROOT/wallpaper/tahoe-gnome.png" "$HOME/.local/share/backgrounds/tahoe-gnome.png" ||
+    fail 'wallpaper not installed'
+if command -v qt6ct >/dev/null; then
+    grep -q "^QT_PLUGIN_PATH=$HOME/.local/share/tahoe-gnome-qt6" "$HOME/.config/environment.d/tahoe-qt.conf" ||
+        fail 'prebuilt Qt title-bar plugin not used (rerun qt/build-decoration.sh?)'
+    [ -e "$HOME/.local/share/tahoe-gnome-qt6/wayland-decoration-client/libqwhitesurgtkdecorations.so" ] ||
+        fail 'Qt title-bar plugin missing'
+fi
 enabled=$(dconf read /org/gnome/shell/enabled-extensions)
 [[ $enabled == *keep-me@example.com* ]] || fail 'dropped an existing extension'
 [[ $enabled == *UbuntuTahoeDock@* ]] || fail 'dock not enabled'
@@ -71,10 +86,14 @@ fi
 
 want /org/gnome/desktop/interface/gtk-theme "'Adwaita'"
 want /org/gnome/shell/favorite-apps "['mine.desktop']"
+want /org/gnome/desktop/background/picture-uri "'file:///mine.png'"
+[ ! -e "$HOME/.local/share/backgrounds/tahoe-gnome.png" ] || fail 'wallpaper not removed'
 want /org/gnome/shell/enabled-extensions "['keep-me@example.com', 'dash-to-dock@micxgx.gmail.com']"
 [ "$(cat "$HOME/.config/gtk-3.0/gtk.css")" = '/* mine */' ] || fail 'gtk.css not restored'
 [ ! -e "$HOME/.themes/MacTahoe-Dark" ] || fail 'theme not removed'
 [ ! -e "$HOME/.local/share/icons/MacTahoe-blue-dark" ] || fail 'icons not removed'
 [ ! -e "$HOME/.local/share/fonts/tahoe-gnome" ] || fail 'fonts not removed'
+[ ! -e "$HOME/.local/share/tahoe-gnome-qt6" ] || fail 'Qt plugin not removed'
+[ ! -e "$HOME/.config/environment.d/tahoe-qt.conf" ] || fail 'Qt environment not removed'
 CHECK
 echo 'PASS'

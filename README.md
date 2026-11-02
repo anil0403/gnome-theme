@@ -22,7 +22,9 @@ may look different.
 - Screenshot UI on `Print` or `Shift+Super+S`
 - `Alt` + drag to move windows, `Alt` + right-drag to resize, and middle-click a
   title bar to lower the window
-- Matching Qt theme, if `qt6ct` and Kvantum are installed
+- A dark Arch Linux wallpaper on the desktop and lock screen
+- Matching Qt apps through `qt6ct` and Kvantum, with the same 20px title-bar
+  buttons
 
 ## Install
 
@@ -33,15 +35,26 @@ your distro's `gnome-shell-extensions` package.
 curl -fsSL https://raw.githubusercontent.com/anil0403/tahoe-gnome/main/bootstrap.sh | bash
 ```
 
-Log out and back in when it finishes. The script works per user and never needs
-root. It installs the latest release, and downloads the extensions and icons from
-their original projects at pinned commits. See [THIRD_PARTY.md](THIRD_PARTY.md).
+Log out and back in when it finishes. The script works per user. It installs the
+latest release, and downloads the extensions and icons from their original
+projects at pinned commits. See [THIRD_PARTY.md](THIRD_PARTY.md).
 
 Prefer to read it first? Clone the repo and run `./install.sh`.
 
 It disables the Dash to Dock, Ubuntu Dock, Blur My Shell, Just Perfection, Global
-Menu and Kimpanel extensions, because they conflict with this theme. Your
-favourites and wallpaper are left alone.
+Menu and Kimpanel extensions, because they conflict with this theme. It sets the
+wallpaper, and leaves your favourites alone.
+
+### Qt apps
+
+If `qt6ct` or Kvantum is missing, the installer installs them with your package
+manager (pacman, apt or dnf), which asks for your password. This is the only step
+that needs root. If it fails, Qt apps keep their own look.
+
+The 20px title-bar buttons for Qt apps come from a prebuilt plugin. It only works
+with the Qt version it was built for, listed in
+`qt/wayland-decoration-client/BUILT_FOR`. On other Qt versions, Qt apps keep their
+own title bars.
 
 ### Fonts
 
@@ -80,7 +93,6 @@ session bus. Your desktop isn't touched.
 ## Not included
 
 - Apps and app configs, including terminal, editor and browser themes
-- Wallpapers
 - The GDM login screen theme
 
 ## License

@@ -61,10 +61,22 @@ shell_major=$(gnome-shell --version | grep -oE '[0-9]+' | head -1)
 [ "$shell_major" -eq "$TESTED_SHELL" ] ||
     warn "tested on GNOME Shell $TESTED_SHELL only; expect shell styling differences on $shell_major"
 
+system_lib() { compgen -G "/usr/lib*/$1" >/dev/null || compgen -G "/usr/lib/*/$1" >/dev/null; }
+has_qt_tools() { command -v qt6ct >/dev/null && system_lib qt6/plugins/styles/libkvantum.so; }
+install_qt_tools() {
+    echo 'Installing qt6ct and Kvantum so Qt apps match (asks for your password)...'
+    if command -v pacman >/dev/null; then sudo pacman -S --needed --noconfirm qt6ct kvantum
+    elif command -v apt-get >/dev/null; then sudo apt-get install -y qt6ct qt6-style-kvantum
+    elif command -v dnf >/dev/null; then sudo dnf install -y qt6ct kvantum
+    else return 1; fi
+}
+has_qt_tools || install_qt_tools || true
 qt=false
-if command -v qt6ct >/dev/null && command -v kvantummanager >/dev/null; then qt=true; fi
+if has_qt_tools; then qt=true; fi
 
 GTK4_LINKS=(gtk.css gtk-dark.css assets windows-assets)
+WALLPAPER=$DATA/backgrounds/tahoe-gnome.png
+QT_PLUGINS=$DATA/tahoe-gnome-qt6
 paths=("$HOME/.themes/MacTahoe-Dark")
 for f in "${GTK4_LINKS[@]}"; do paths+=("$CONFIG/gtk-4.0/$f"); done
 for name in "${EXTENSIONS[@]}"; do paths+=("$EXT_DIR/$name@adfoxtheme.github.io"); done
@@ -72,31 +84,36 @@ for icon in MacTahoe MacTahoe-light MacTahoe-dark MacTahoe-blue MacTahoe-blue-li
     MacTahoe-blue-dark MacTahoe-cursors MacTahoe-dark-cursors; do
     paths+=("$DATA/icons/$icon")
 done
+paths+=("$FONT_DIR" "$WALLPAPER")
 if "$qt"; then
     paths+=("$CONFIG/Kvantum/TahoeGlassDark" "$CONFIG/Kvantum/kvantum.kvconfig"
         "$CONFIG/qt6ct/qt6ct.conf" "$CONFIG/environment.d/tahoe-qt.conf"
-        "$CONFIG/kdeglobals" "$DATA/color-schemes/TahoeGlassDark.colors")
+        "$CONFIG/kdeglobals" "$DATA/color-schemes/TahoeGlassDark.colors" "$QT_PLUGINS")
 fi
 
-# Snapshot once, before anything changes, so a re-run never backs up our own files.
-if [ ! -e "$STATE/backup-done" ]; then
-    mkdir -p "$STATE/backup"
-    for p in "${paths[@]}"; do
-        if [ -e "$p" ] || [ -L "$p" ]; then
-            mkdir -p "$STATE/backup$(dirname "$p")"
-            cp -a "$p" "$STATE/backup$p"
-        fi
-    done
-    {
-        awk -F= '/^\[/ { s = substr($0, 2, length($0) - 2); next }
-                 /=/  { print "/" s "/" $1 }' "$ROOT"/dconf/*.ini
-        printf '%s\n' /org/gnome/shell/enabled-extensions /org/gnome/shell/disabled-extensions \
-            /org/gnome/shell/disable-user-extensions
-    } | while read -r key; do printf '%s\t%s\n' "$key" "$(dconf read "$key")"; done \
-        > "$STATE/dconf-before.tsv"
-    printf '%s\n' "${paths[@]}" > "$STATE/paths"
-    touch "$STATE/backup-done"
-fi
+# Back up each file and setting the first time any install is about to change
+# it, so a re-run never backs up our own files and upgrades cover new ones.
+mkdir -p "$STATE/backup"
+touch "$STATE/paths" "$STATE/dconf-before.tsv"
+for p in "${paths[@]}"; do
+    grep -qxF "$p" "$STATE/paths" && continue
+    if [ -e "$p" ] || [ -L "$p" ]; then
+        mkdir -p "$STATE/backup$(dirname "$p")"
+        cp -a "$p" "$STATE/backup$p"
+    fi
+    echo "$p" >> "$STATE/paths"
+done
+{
+    awk -F= '/^\[/ { s = substr($0, 2, length($0) - 2); next }
+             /=/  { print "/" s "/" $1 }' "$ROOT"/dconf/*.ini
+    printf '%s\n' /org/gnome/shell/enabled-extensions /org/gnome/shell/disabled-extensions \
+        /org/gnome/shell/disable-user-extensions /org/gnome/desktop/background/picture-uri \
+        /org/gnome/desktop/background/picture-uri-dark /org/gnome/desktop/screensaver/picture-uri
+} | while read -r key; do
+    grep -q "^$key	" "$STATE/dconf-before.tsv" ||
+        printf '%s\t%s\n' "$key" "$(dconf read "$key")" >> "$STATE/dconf-before.tsv"
+done
+touch "$STATE/backup-done"
 
 # Kept here because the one-command install runs from a temp folder.
 cp "$ROOT/uninstall.sh" "$STATE/uninstall.sh"
@@ -158,11 +175,23 @@ if "$qt"; then
         kwriteconfig6 --file "$CONFIG/kdeglobals" --group General --key ColorScheme TahoeGlassDark
         kwriteconfig6 --file "$CONFIG/kdeglobals" --group UiSettings --key ColorScheme TahoeGlassDark
     fi
-    echo 'QT_QPA_PLATFORMTHEME=qt6ct' > "$CONFIG/environment.d/tahoe-qt.conf"
-    # Optional plugin: only name it when installed, or Qt falls back with a warning.
-    if compgen -G '/usr/lib*/qt6/plugins/wayland-decoration-client/*whitesur*' >/dev/null ||
-        compgen -G '/usr/lib*/*/qt6/plugins/wayland-decoration-client/*whitesur*' >/dev/null; then
-        echo 'QT_WAYLAND_DECORATION=whitesur-gtk' >> "$CONFIG/environment.d/tahoe-qt.conf"
+    env_file=$CONFIG/environment.d/tahoe-qt.conf
+    echo 'QT_QPA_PLATFORMTHEME=qt6ct' > "$env_file"
+    # The prebuilt 20px title-bar plugin uses Qt private API, so it only loads on
+    # the Qt version it was built for (see qt/build-decoration.sh).
+    decor=$ROOT/qt/wayland-decoration-client
+    qt_core=$(ls /usr/lib*/libQt6Core.so.6.*.* /usr/lib/*/libQt6Core.so.6.*.* 2>/dev/null | head -1) || true
+    qt_version=${qt_core##*.so.}
+    rm -rf "$QT_PLUGINS"
+    if [ "$(cat "$decor/BUILT_FOR" 2>/dev/null)" = "${qt_version%.*} $(uname -m)" ]; then
+        mkdir -p "$QT_PLUGINS/wayland-decoration-client"
+        cp "$decor/libqwhitesurgtkdecorations.so" "$QT_PLUGINS/wayland-decoration-client/"
+        echo "QT_PLUGIN_PATH=$QT_PLUGINS\${QT_PLUGIN_PATH:+:\$QT_PLUGIN_PATH}" >> "$env_file"
+        echo 'QT_WAYLAND_DECORATION=whitesur-gtk' >> "$env_file"
+    elif system_lib 'qt6/plugins/wayland-decoration-client/*whitesur*'; then
+        echo 'QT_WAYLAND_DECORATION=whitesur-gtk' >> "$env_file"
+    else
+        warn "the 20px Qt title-bar plugin is built for Qt $(cat "$decor/BUILT_FOR" 2>/dev/null), not ${qt_version%.*} $(uname -m), so Qt apps keep their own title bar"
     fi
 fi
 
@@ -171,7 +200,6 @@ has_sf() { command -v fc-list >/dev/null && fc-list -q 'SF Pro Text' &&
     fc-list -q 'SF Pro Display' && fc-list -q 'SF Mono'; }
 if ! has_sf; then
     echo "Fetching SF Pro and SF Mono from Apple (about 220 MB, Apple's license applies)..."
-    grep -qxF "$FONT_DIR" "$STATE/paths" || echo "$FONT_DIR" >> "$STATE/paths"
     rm -rf "$FONT_DIR"
     if command -v curl 7z cpio fc-cache >/dev/null && get_font SF-Pro && get_font SF-Mono; then
         fc-cache -f "$FONT_DIR"
@@ -183,6 +211,12 @@ fi
 
 echo 'Applying settings...'
 dconf load / < "$ROOT/dconf/settings.ini"
+mkdir -p "$DATA/backgrounds"
+cp "$ROOT/wallpaper/tahoe-gnome.png" "$WALLPAPER"
+uri=$(python3 -c 'import pathlib, sys; print(pathlib.Path(sys.argv[1]).as_uri())' "$WALLPAPER")
+for key in background/picture-uri background/picture-uri-dark screensaver/picture-uri; do
+    dconf write "/org/gnome/desktop/$key" "'$uri'"
+done
 if has_sf; then
     dconf load / < "$ROOT/dconf/fonts.ini"
 else
