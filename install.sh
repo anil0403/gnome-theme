@@ -294,4 +294,4 @@ done
 "$qt" || warn 'qt6ct or Kvantum is missing, so Qt apps were left unthemed'
 
 cp "$ROOT/VERSION" "$STATE/version"
-echo "Done: Tahoe GNOME $(cat "$ROOT/VERSION"). Log out and back in to load the extensions."
+echo "Done: GNOME Theme $(cat "$ROOT/VERSION"). Log out and back in to load the extensions."

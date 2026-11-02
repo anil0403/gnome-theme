@@ -1,6 +1,6 @@
-# Tahoe GNOME
+# GNOME Theme
 
-A dark, macOS Tahoe-style desktop theme for GNOME: colours, window controls,
+A dark, macOS-style desktop theme for GNOME: colours, window controls,
 icons, cursors, dock, menu bar and behaviour. It only themes your desktop and
 installs no apps.
 
