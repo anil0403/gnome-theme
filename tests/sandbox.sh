@@ -41,6 +41,7 @@ echo 1.0.1 > "$STATE/version"
 want /org/gnome/desktop/interface/gtk-theme "'MacTahoe-Dark'"
 want /org/gnome/shell/extensions/user-theme/name "'MacTahoe-Dark'"
 want /org/gnome/shell/favorite-apps "['mine.desktop']"
+want /org/gnome/desktop/interface/monospace-font-name "'SF Mono 11'"
 enabled=$(dconf read /org/gnome/shell/enabled-extensions)
 [[ $enabled == *keep-me@example.com* ]] || fail 'dropped an existing extension'
 [[ $enabled == *UbuntuTahoeDock@* ]] || fail 'dock not enabled'
@@ -74,5 +75,6 @@ want /org/gnome/shell/enabled-extensions "['keep-me@example.com', 'dash-to-dock@
 [ "$(cat "$HOME/.config/gtk-3.0/gtk.css")" = '/* mine */' ] || fail 'gtk.css not restored'
 [ ! -e "$HOME/.themes/MacTahoe-Dark" ] || fail 'theme not removed'
 [ ! -e "$HOME/.local/share/icons/MacTahoe-blue-dark" ] || fail 'icons not removed'
+[ ! -e "$HOME/.local/share/fonts/tahoe-gnome" ] || fail 'fonts not removed'
 CHECK
 echo 'PASS'

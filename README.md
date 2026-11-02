@@ -12,6 +12,7 @@ may look different.
 
 - `MacTahoe-Dark` for GTK 3, GTK 4 and libadwaita, GNOME Shell and window frames
 - `MacTahoe-blue-dark` icons, `MacTahoe-cursors` cursors and blue accents
+- SF Pro for the interface and SF Mono for code, downloaded from Apple
 - Larger 20px traffic-light buttons on the left of the title bar
 - A bottom dock with hidden trash, where clicking a focused app minimizes it
 - A global menu bar, Activities hidden, and a `3:45 PM  2 Nov Mon` style clock
@@ -44,10 +45,12 @@ favourites and wallpaper are left alone.
 
 ### Fonts
 
-The theme is designed for SF Pro and SF Mono, but Apple's license doesn't allow
-sharing them here. Get them from [Apple](https://developer.apple.com/fonts/),
-where its terms allow your use, and install them before running `install.sh`.
-Without them, your current fonts are kept.
+The theme uses SF Pro and SF Mono. Apple's license doesn't allow sharing them
+here, so if you don't already have them, the installer downloads them from
+[Apple](https://developer.apple.com/fonts/) (about 220 MB) into
+`~/.local/share/fonts/tahoe-gnome`. This needs `7z` and `cpio`, and the fonts are
+covered by Apple's license, not this repo's. If the download fails, your current
+fonts are kept.
 
 ## Update
 
@@ -77,7 +80,7 @@ session bus. Your desktop isn't touched.
 ## Not included
 
 - Apps and app configs, including terminal, editor and browser themes
-- Fonts and wallpapers
+- Wallpapers
 - The GDM login screen theme
 
 ## License

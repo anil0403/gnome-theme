@@ -13,6 +13,9 @@ EXTENSIONS_REPO=https://github.com/adfoxtheme/mactahoe-ubuntu
 EXTENSIONS_SHA=e9b8f3a1fb57d16c70f484d47767b833e4f5ae71
 ICONS_REPO=https://github.com/vinceliuice/MacTahoe-icon-theme
 ICONS_SHA=839848b9a8a38a92a6936e30c4abe35cc6f2546d
+# Apple's own downloads: the fonts can't be redistributed, so each user fetches them.
+APPLE_FONTS=https://devimages-cdn.apple.com/design/resources/download
+FONT_DIR=$DATA/fonts/tahoe-gnome
 
 TESTED_SHELL=51
 EXTENSIONS=(UbuntuTahoe UbuntuTahoeDock UbuntuTahoeClipboard UbuntuTahoeSpotlight)
@@ -33,6 +36,19 @@ fetch() { # url sha dest [sparse path]
     [ -z "${4:-}" ] || git -C "$3" sparse-checkout set "$4"
     git -C "$3" fetch -q --depth 1 --filter=blob:none origin "$2"
     git -C "$3" checkout -q FETCH_HEAD
+}
+
+get_font() { # SF-Pro or SF-Mono: dmg > pkg > gzipped cpio payload > otf files
+    local pkg payload
+    curl -fsSL -o "$tmp/$1.dmg" "$APPLE_FONTS/$1.dmg" &&
+        7z x -y -o"$tmp/$1" "$tmp/$1.dmg" >/dev/null &&
+        pkg=$(find "$tmp/$1" -name '*.pkg' -print -quit) && [ -n "$pkg" ] &&
+        7z x -y -o"$tmp/$1-pkg" "$pkg" >/dev/null &&
+        payload=$(find "$tmp/$1-pkg" -name Payload -print -quit) && [ -n "$payload" ] &&
+        mkdir -p "$tmp/$1-out" "$FONT_DIR/$1" &&
+        (cd "$tmp/$1-out" && gzip -dc "$payload" | cpio -idm --quiet --no-absolute-filenames) &&
+        find "$tmp/$1-out" -name '*.otf' -exec cp -t "$FONT_DIR/$1/" {} + &&
+        [ -n "$(ls "$FONT_DIR/$1")" ]
 }
 
 [ "$(id -u)" -ne 0 ] || die 'run this as your normal user, not root'
@@ -150,9 +166,24 @@ if "$qt"; then
     fi
 fi
 
+# The families dconf/fonts.ini names. No grep -q pipe: under pipefail it fails at random.
+has_sf() { command -v fc-list >/dev/null && fc-list -q 'SF Pro Text' &&
+    fc-list -q 'SF Pro Display' && fc-list -q 'SF Mono'; }
+if ! has_sf; then
+    echo "Fetching SF Pro and SF Mono from Apple (about 220 MB, Apple's license applies)..."
+    grep -qxF "$FONT_DIR" "$STATE/paths" || echo "$FONT_DIR" >> "$STATE/paths"
+    rm -rf "$FONT_DIR"
+    if command -v curl 7z cpio fc-cache >/dev/null && get_font SF-Pro && get_font SF-Mono; then
+        fc-cache -f "$FONT_DIR"
+    else
+        rm -rf "$FONT_DIR"
+        warn 'could not fetch the SF fonts (needs curl, 7z, cpio and fontconfig)'
+    fi
+fi
+
 echo 'Applying settings...'
 dconf load / < "$ROOT/dconf/settings.ini"
-if command -v fc-list >/dev/null && fc-list | grep -q 'SF Pro'; then
+if has_sf; then
     dconf load / < "$ROOT/dconf/fonts.ini"
 else
     warn 'SF Pro is not installed, so your current fonts were kept (see README)'

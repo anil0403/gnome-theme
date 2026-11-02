@@ -38,7 +38,8 @@ removed, please open an issue.
 
 ## Not included
 
-SF Pro and SF Mono belong to Apple and are not redistributed.
+SF Pro and SF Mono belong to Apple and are not redistributed. The installer downloads
+them from Apple for each user, under Apple's license.
 
 macOS and Tahoe are Apple's. This project is not affiliated with or endorsed by
 Apple.
